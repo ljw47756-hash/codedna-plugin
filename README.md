@@ -2,6 +2,130 @@
 
 CodeDNA is a Codex Plugin for preparing, executing, reviewing, and remembering coding work. It runs as a local plugin with discoverable skills and a TypeScript MCP server.
 
+## Quick Install From GitHub
+
+Add this repository as a plugin marketplace in Codex App:
+
+```text
+Source: https://github.com/ljw47756-hash/codedna-plugin.git
+Git ref: main
+Sparse path: leave blank
+```
+
+After installation, restart Codex App or start a new thread so the plugin skills and MCP server are loaded.
+
+Confirm the installation in Codex App:
+
+- Search `codedna` in the Skills view. You should see 9 CodeDNA skills.
+- Open Settings -> MCP Servers. You should see `Codedna` enabled.
+- The plugin may not appear as a top-level app-style plugin card. CodeDNA is a tools plugin made of skills plus an MCP server, not an external app connector.
+
+## How To Invoke CodeDNA
+
+CodeDNA can be triggered naturally by its skills when a task is complex, but explicit prompts are more reliable.
+
+Use a short trigger for ordinary guarded coding work:
+
+```text
+Use CodeDNA for this task.
+```
+
+Use a stronger trigger when you want planning before edits:
+
+```text
+Use CodeDNA. First analyze, generate guardrails, then ask me before editing files.
+```
+
+Use the full workflow for architecture-sensitive or multi-file work:
+
+```text
+Use CodeDNA full workflow before editing.
+```
+
+Recommended first test prompt:
+
+```text
+Use CodeDNA full workflow for this project:
+C:\path\to\your\project
+
+Request:
+Add a short README quick start section, but do not edit files yet. First generate Requirement Strand, Analysis Strand, Project Profile, Project Genome, Pairing Result, Guardrails, Test Plan, and Codex Task Pack.
+```
+
+Use CodeDNA for:
+
+- Multi-file implementation tasks.
+- Vague requests that need requirement capture.
+- Refactors or architecture-sensitive changes.
+- Tasks with strict file boundaries.
+- Tasks that need guardrails before editing.
+- Reviewing a Codex diff before accepting it.
+- Repairing failed Codex output.
+- Updating memory after explicit user confirmation.
+
+You usually do not need CodeDNA for:
+
+- Tiny copy edits.
+- Simple explanations.
+- One-line fixes with obvious scope.
+- General questions that do not touch code.
+
+## What Shows Up In Codex App
+
+CodeDNA is a Codex Plugin, but it is not an app connector. In Codex App it is expected to appear as separate capabilities:
+
+```text
+Skills: CodeDNA workflow instructions
+MCP: Codedna local tool server
+Apps: none
+Top-level plugin card: may not appear for local tools plugins
+```
+
+This is normal. The important checks are that CodeDNA skills are enabled and the `Codedna` MCP server is enabled.
+
+## Sharing This Plugin
+
+Send users this repository URL:
+
+```text
+https://github.com/ljw47756-hash/codedna-plugin.git
+```
+
+They should install it through Codex App with:
+
+```text
+Source: https://github.com/ljw47756-hash/codedna-plugin.git
+Git ref: main
+Sparse path: leave blank
+```
+
+Do not share a local cache directory such as:
+
+```text
+C:\Users\<name>\.codex\plugins\cache\...
+```
+
+That cache is machine-specific. The GitHub repository is the distribution source.
+
+If the skills install but the MCP server does not start, verify that Node.js is installed and that the `Codedna` MCP server is enabled in Codex App settings. Advanced users can register the MCP server manually with an absolute Node path and the local `mcp-server\dist\server.js` path.
+
+## Privacy And Data
+
+CodeDNA does not call external AI APIs from its MCP server. It stores workflow artifacts locally so Codex can plan, review, repair, and remember coding work.
+
+Local runtime files may include:
+
+- Requirement and Analysis strands.
+- Task packs.
+- Review reports.
+- Test plans.
+- Project profiles and Project Genome data.
+- Memory proposals and confirmed memory.
+
+By default, plugin runtime data is written under the plugin `data/` directory. If `CODEDNA_DATA_DIR` is set in the MCP server environment, CodeDNA writes runtime files there instead.
+
+Do not commit local runtime data, secrets, API keys, tokens, private project files, or personal memory exports.
+
 ## 1. What CodeDNA Is
 
 CodeDNA helps Codex turn an ambiguous coding request into a structured local workflow:
@@ -178,6 +302,8 @@ Use CodeDNA to prepare this coding task: add a login page and do not modify unre
 ```
 
 A successful load should make CodeDNA skills available and expose MCP tools named `codedna_*`.
+
+In Codex App, CodeDNA is expected to be visible under Skills and MCP Servers. It may not show as a clickable top-level app-style plugin in the composer menu because it does not provide an app connector.
 
 ### Install Screenshot Notes
 

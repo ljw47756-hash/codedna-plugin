@@ -4,11 +4,11 @@
   "description": "CodeDNA orchestrates Codex coding work with requirement capture, reverse analysis, Project Genome, guardrails, task packs, diff review, repair tasks, outcome scoring, and layered local memory.",
   "author": {
     "name": "CodeDNA",
-    "email": "codedna@example.com",
-    "url": "https://example.com/codedna"
+    "email": "ljw47756-hash@users.noreply.github.com",
+    "url": "https://github.com/ljw47756-hash/codedna-plugin"
   },
-  "homepage": "https://example.com/codedna",
-  "repository": "https://example.com/codedna-plugin",
+  "homepage": "https://github.com/ljw47756-hash/codedna-plugin",
+  "repository": "https://github.com/ljw47756-hash/codedna-plugin",
   "license": "MIT",
   "keywords": [
     "codex",
@@ -32,9 +32,9 @@
       "Analyze",
       "Local"
     ],
-    "websiteURL": "https://example.com/codedna",
-    "privacyPolicyURL": "https://example.com/codedna/privacy",
-    "termsOfServiceURL": "https://example.com/codedna/terms",
+    "websiteURL": "https://github.com/ljw47756-hash/codedna-plugin",
+    "privacyPolicyURL": "https://github.com/ljw47756-hash/codedna-plugin#privacy-and-data",
+    "termsOfServiceURL": "https://github.com/ljw47756-hash/codedna-plugin/blob/main/LICENSE",
     "defaultPrompt": [
       "Use CodeDNA to prepare this coding task.",
       "Generate a CodeDNA task pack for Codex.",
