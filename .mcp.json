@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "codedna": {
+      "command": "node",
+      "args": [
+        "./mcp-server/dist/server.js"
+      ],
+      "env": {
+        "CODEDNA_DATA_DIR": "./data"
+      }
+    }
+  }
+}

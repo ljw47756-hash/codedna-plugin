@@ -1,0 +1,47 @@
+{
+  "name": "codedna-plugin",
+  "version": "0.1.0+codex.20260614062925",
+  "description": "CodeDNA orchestrates Codex coding work with requirement capture, reverse analysis, Project Genome, guardrails, task packs, diff review, repair tasks, outcome scoring, and layered local memory.",
+  "author": {
+    "name": "CodeDNA",
+    "email": "codedna@example.com",
+    "url": "https://example.com/codedna"
+  },
+  "homepage": "https://example.com/codedna",
+  "repository": "https://example.com/codedna-plugin",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "workflow",
+    "mcp",
+    "requirements",
+    "review",
+    "guardrails",
+    "memory"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "CodeDNA",
+    "shortDescription": "Plan, guard, review, repair, score, and remember Codex coding tasks.",
+    "longDescription": "CodeDNA is a local Codex workflow plugin for complex coding work. It captures the user's Requirement Strand, generates a reverse Analysis Strand, builds a Project Genome, pairs both strands, blocks under-specified tasks, writes copy-ready Codex Task Packs, generates guardrails, reviews diffs for risk, creates focused repair tasks, scores outcomes, and evolves layered local memory without external AI APIs.",
+    "developerName": "CodeDNA",
+    "category": "Productivity",
+    "capabilities": [
+      "Write",
+      "Analyze",
+      "Local"
+    ],
+    "websiteURL": "https://example.com/codedna",
+    "privacyPolicyURL": "https://example.com/codedna/privacy",
+    "termsOfServiceURL": "https://example.com/codedna/terms",
+    "defaultPrompt": [
+      "Use CodeDNA to prepare this coding task.",
+      "Generate a CodeDNA task pack for Codex.",
+      "Review this Codex result with CodeDNA."
+    ],
+    "brandColor": "#38BDF8",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

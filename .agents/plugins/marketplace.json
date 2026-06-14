@@ -1,0 +1,20 @@
+{
+  "name": "codedna-local",
+  "interface": {
+    "displayName": "CodeDNA Local"
+  },
+  "plugins": [
+    {
+      "name": "codedna-plugin",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
