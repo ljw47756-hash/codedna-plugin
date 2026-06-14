@@ -1,0 +1,37 @@
+# Runtime output
+/.codedna/
+/data/
+/data/memory/
+/data/tasks/
+/data/reviews/
+/data/strands/
+/mcp-server/dist/
+/mcp-server/.codedna-smoke/
+/mcp-server/.npm/
+
+# Dependencies and package-manager caches
+/node_modules/
+/mcp-server/node_modules/
+/.npm/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*token*
+*secret*
+*.local
+
+# Logs and operating-system files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+Thumbs.db
+.DS_Store

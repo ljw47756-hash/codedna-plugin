@@ -1,0 +1,14 @@
+{
+  "memory_patch": {
+    "ui_style_preferences": ["dark", "minimal"],
+    "code_preferences": ["keep changes scoped"]
+  },
+  "event": {
+    "type": "user_preference",
+    "result": "saved"
+  },
+  "successful_pattern": {
+    "name": "Scoped dark UI task",
+    "summary": "User prefers scoped diffs and dark minimal UI."
+  }
+}

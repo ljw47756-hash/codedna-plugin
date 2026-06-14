@@ -1,0 +1,58 @@
+{
+  "project_path": "E:/example/project",
+  "project_name": "example-project",
+  "language": [
+    "TypeScript"
+  ],
+  "framework": [
+    "Next.js",
+    "React"
+  ],
+  "package_manager": "npm",
+  "dependency_files": [
+    {
+      "path": "package.json",
+      "kind": "node",
+      "packages": [
+        "next",
+        "react",
+        "typescript"
+      ]
+    }
+  ],
+  "main_directories": [
+    "src",
+    "tests"
+  ],
+  "entry_points": [
+    "src/app/page.tsx"
+  ],
+  "component_dirs": [
+    "src/components"
+  ],
+  "api_dirs": [
+    "src/app/api"
+  ],
+  "config_files": [
+    "next.config.js",
+    "tsconfig.json"
+  ],
+  "test_dirs": [
+    "tests"
+  ],
+  "do_not_touch": [
+    ".git/",
+    "node_modules/",
+    ".env"
+  ],
+  "tree_summary": [
+    "src/",
+    "src/app/page.tsx",
+    "src/components/LoginForm.tsx",
+    "tests/login.test.ts"
+  ],
+  "notes": [
+    "Detected frameworks: Next.js, React"
+  ],
+  "scanned_at": "2026-06-13T00:00:00.000Z"
+}

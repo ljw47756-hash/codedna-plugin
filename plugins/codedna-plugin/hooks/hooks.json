@@ -1,0 +1,31 @@
+{
+  "status": "compatible-reserved",
+  "reason": "The current Codex plugin validator rejects hooks in plugin.json, so CodeDNA keeps hook guidance as optional local assets instead of registering unsupported manifest fields.",
+  "hooks": [
+    {
+      "id": "codedna-pre-task",
+      "file": "./pre-task.md",
+      "phase": "before_complex_coding_task",
+      "trigger_when": [
+        "multi-file coding task",
+        "architecture change",
+        "bug repair",
+        "new feature module",
+        "explicit constraints or acceptance criteria"
+      ],
+      "action": "Remind Codex to run CodeDNA scan, parse, analysis, pairing, and task pack generation before implementation."
+    },
+    {
+      "id": "codedna-post-task",
+      "file": "./post-task.md",
+      "phase": "after_coding_task",
+      "trigger_when": [
+        "Codex returns a diff",
+        "Codex returns a final summary",
+        "tests fail",
+        "the user asks whether the result is safe to accept"
+      ],
+      "action": "Remind Codex to run CodeDNA review output and optionally update memory."
+    }
+  ]
+}

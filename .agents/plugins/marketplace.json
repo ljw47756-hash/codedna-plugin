@@ -8,7 +8,7 @@
       "name": "codedna-plugin",
       "source": {
         "source": "local",
-        "path": "./"
+        "path": "./plugins/codedna-plugin"
       },
       "policy": {
         "installation": "AVAILABLE",

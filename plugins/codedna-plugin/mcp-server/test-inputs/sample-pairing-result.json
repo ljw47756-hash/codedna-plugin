@@ -1,0 +1,21 @@
+{
+  "pairing_score": 86,
+  "matched_pairs": [
+    {
+      "pair_type": "Goal <-> Task",
+      "requirement_item": "Add a login page",
+      "analysis_item": "Implement a login page within the existing Next.js project.",
+      "status": "matched",
+      "confidence": 0.92,
+      "notes": "Goal is represented by the technical task."
+    }
+  ],
+  "unmatched_pairs": [],
+  "warnings": [
+    "Task Pack can be generated, but include assumptions, risks, and caution notes."
+  ],
+  "missing_information": [],
+  "ready_for_codex": true,
+  "execution_level": "cautious",
+  "created_at": "2026-06-13T00:00:00.000Z"
+}
