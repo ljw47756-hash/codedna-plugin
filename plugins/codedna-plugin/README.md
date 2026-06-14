@@ -1,575 +1,168 @@
 # CodeDNA Codex Plugin
 
-CodeDNA is a Codex Plugin for preparing, executing, reviewing, and remembering coding work. It runs as a local plugin with discoverable skills and a TypeScript MCP server.
+CodeDNA 是一个面向 Codex 的工具型插件，用来帮助 Codex 在处理复杂代码任务时先做规划、边界确认和结果检查。
 
-## Quick Install From GitHub
+它不是桌面软件，也不是外部 App 连接器。CodeDNA 通过 `skills` 引导 Codex 的工作方式，并通过本地 `MCP server` 提供必要的本地工具能力。
 
-Add this repository as a plugin marketplace in Codex App:
+## 安装方式
+
+在 Codex App 中添加插件市场：
 
 ```text
-Source: https://github.com/ljw47756-hash/codedna-plugin.git
-Git ref: main
-Sparse path: leave blank
+来源: https://github.com/ljw47756-hash/codedna-plugin.git
+Git 引用: main
+稀疏路径: 留空
 ```
 
-After installation, restart Codex App or start a new thread so the plugin skills and MCP server are loaded.
+安装后建议重启 Codex App，或者至少新开一个对话，让插件能力重新加载。
 
-Confirm the installation in Codex App:
+## 图片示例
 
-- Search `codedna` in the Skills view. You should see 9 CodeDNA skills.
-- Open Settings -> MCP Servers. You should see `Codedna` enabled.
-- The plugin may not appear as a top-level app-style plugin card. CodeDNA is a tools plugin made of skills plus an MCP server, not an external app connector.
+![CodeDNA GitHub install example](assets/docs/codedna-install.svg)
 
-## How To Invoke CodeDNA
+![CodeDNA in Codex App](assets/docs/codedna-app-visibility.svg)
 
-CodeDNA can be triggered naturally by its skills when a task is complex, but explicit prompts are more reliable.
+![CodeDNA usage flow](assets/docs/codedna-workflow.svg)
 
-Use a short trigger for ordinary guarded coding work:
+## 安装成功后应该看到什么
+
+CodeDNA 是 `MCP + Skills` 类型的工具插件，所以它在 Codex App 中通常会拆开显示：
+
+```text
+Skills: CodeDNA 相关技能
+MCP: Codedna 本地工具服务器
+Apps: 不显示
+右下角插件菜单: 不一定显示
+```
+
+这是正常现象。判断是否安装成功，主要看两点：
+
+- 在 Skills 里能搜索到 `codedna`。
+- 在 Settings -> MCP Servers 里能看到 `Codedna`，并且开关已打开。
+
+## 什么时候适合使用 CodeDNA
+
+CodeDNA 更适合那些“直接让 Codex 改可能会跑偏”的任务。尤其是任务范围大、需求不够清楚、文件边界严格、或者完成后需要认真验收时。
+
+| 任务类型 | 是否适合 | 建议 |
+| --- | --- | --- |
+| 多文件功能开发 | 很适合 | 先让 CodeDNA 分析范围，再执行 |
+| 需求还不够清楚 | 很适合 | 先让 CodeDNA 整理问题和缺失信息 |
+| Bug 修复 | 适合 | 先确认现象、影响范围和验证方式 |
+| 重构 | 适合 | 先确认边界，避免改出行为变化 |
+| 有明确禁止修改范围 | 很适合 | 先生成执行边界，再让 Codex 动手 |
+| 安全、性能、架构相关改动 | 很适合 | 先评估风险，再执行 |
+| Codex 已经写完，需要验收 | 适合 | 用 CodeDNA 检查结果是否偏离需求 |
+| 一行文案或简单解释 | 不太需要 | 直接让 Codex 做即可 |
+
+简单判断规则：
+
+- 只改一个小地方：通常不用 CodeDNA。
+- 涉及多个文件或多个步骤：建议用 CodeDNA。
+- 不希望 Codex 立刻动手改文件：建议用 CodeDNA。
+- 你需要先看计划、边界、风险或验收方式：建议用 CodeDNA。
+
+## 常用触发方式
+
+普通复杂任务：
 
 ```text
 Use CodeDNA for this task.
 ```
 
-Use a stronger trigger when you want planning before edits:
+先分析，不立刻改文件：
 
 ```text
-Use CodeDNA. First analyze, generate guardrails, then ask me before editing files.
+Use CodeDNA. Analyze first and ask me before editing.
 ```
 
-Use the full workflow for architecture-sensitive or multi-file work:
+重要任务或高风险任务：
 
 ```text
 Use CodeDNA full workflow before editing.
 ```
 
-Recommended first test prompt:
+审查 Codex 已完成的结果：
+
+```text
+Use CodeDNA to review this output.
+```
+
+## 第一次测试
+
+新开一个 Codex 对话，输入：
 
 ```text
 Use CodeDNA full workflow for this project:
 C:\path\to\your\project
 
 Request:
-Add a short README quick start section, but do not edit files yet. First generate Requirement Strand, Analysis Strand, Project Profile, Project Genome, Pairing Result, Guardrails, Test Plan, and Codex Task Pack.
+Add a short README quick start section, but do not edit files yet.
 ```
 
-Use CodeDNA for:
+如果 CodeDNA 正常启用，Codex 会先进行分析和规划，而不是直接改文件。
 
-- Multi-file implementation tasks.
-- Vague requests that need requirement capture.
-- Refactors or architecture-sensitive changes.
-- Tasks with strict file boundaries.
-- Tasks that need guardrails before editing.
-- Reviewing a Codex diff before accepting it.
-- Repairing failed Codex output.
-- Updating memory after explicit user confirmation.
+## 分享给别人
 
-You usually do not need CodeDNA for:
-
-- Tiny copy edits.
-- Simple explanations.
-- One-line fixes with obvious scope.
-- General questions that do not touch code.
-
-## What Shows Up In Codex App
-
-CodeDNA is a Codex Plugin, but it is not an app connector. In Codex App it is expected to appear as separate capabilities:
-
-```text
-Skills: CodeDNA workflow instructions
-MCP: Codedna local tool server
-Apps: none
-Top-level plugin card: may not appear for local tools plugins
-```
-
-This is normal. The important checks are that CodeDNA skills are enabled and the `Codedna` MCP server is enabled.
-
-## Sharing This Plugin
-
-Send users this repository URL:
+把这个仓库地址发给对方即可：
 
 ```text
 https://github.com/ljw47756-hash/codedna-plugin.git
 ```
 
-They should install it through Codex App with:
+对方在 Codex App 中添加插件市场时填写：
 
 ```text
-Source: https://github.com/ljw47756-hash/codedna-plugin.git
-Git ref: main
-Sparse path: leave blank
+来源: https://github.com/ljw47756-hash/codedna-plugin.git
+Git 引用: main
+稀疏路径: 留空
 ```
 
-Do not share a local cache directory such as:
+不要分享你本机的插件缓存目录，例如：
 
 ```text
 C:\Users\<name>\.codex\plugins\cache\...
 ```
 
-That cache is machine-specific. The GitHub repository is the distribution source.
+缓存目录只适合当前电脑，不适合作为插件分发源。
 
-If the skills install but the MCP server does not start, verify that Node.js is installed and that the `Codedna` MCP server is enabled in Codex App settings. Advanced users can register the MCP server manually with an absolute Node path and the local `mcp-server\dist\server.js` path.
+## 本地数据和隐私
 
-## Privacy And Data
+CodeDNA 的 MCP server 以本地方式运行，不依赖外部 AI API。
 
-CodeDNA does not call external AI APIs from its MCP server. It stores workflow artifacts locally so Codex can plan, review, repair, and remember coding work.
+运行过程中产生的任务数据、审查数据和本地记忆数据会写入本地目录。具体位置取决于 Codex 的 MCP 配置和 `CODEDNA_DATA_DIR` 环境变量。
 
-Local runtime files may include:
+请不要把本地运行数据、私有项目内容、密钥、token、个人路径或本地记忆文件提交到公开仓库。
 
-- Requirement and Analysis strands.
-- Task packs.
-- Review reports.
-- Test plans.
-- Project profiles and Project Genome data.
-- Memory proposals and confirmed memory.
+## 开发者说明
 
-By default, plugin runtime data is written under the plugin `data/` directory. If `CODEDNA_DATA_DIR` is set in the MCP server environment, CodeDNA writes runtime files there instead.
-
-Do not commit local runtime data, secrets, API keys, tokens, private project files, or personal memory exports.
-
-## 1. What CodeDNA Is
-
-CodeDNA helps Codex turn an ambiguous coding request into a structured local workflow:
-
-1. Capture the user request as a Requirement Strand.
-2. Reverse-analyze it into an Analysis Strand.
-3. Pair both strands before implementation.
-4. Build a Project Genome for the target repository.
-5. Generate a Codex Task Pack and execution guardrails.
-6. Review the final diff after implementation.
-7. Generate a focused repair task when review fails.
-8. Store session, project, and confirmed user memory with explicit scope.
-9. Generate task-specific test plans and outcome scores.
-
-## 2. What Problem It Solves
-
-Codex can move quickly, but complex coding requests often fail when requirements, constraints, file scope, tests, and review criteria are not explicit. CodeDNA makes those pieces visible before edits start and checks the final output after Codex finishes.
-
-Use it for:
-
-- Multi-file feature work.
-- Bug repair.
-- Refactors.
-- Architecture-sensitive changes.
-- Strict file-scope requests.
-- Requests with acceptance criteria or constraints.
-- Reviewing Codex output before accepting it.
-
-## 3. Plugin Structure
+CodeDNA 是标准 Codex Plugin 项目，核心结构包括：
 
 ```text
-C:\path\to\codedna-plugin
-|-- .codex-plugin\plugin.json
-|-- .mcp.json
-|-- .agents\plugins\marketplace.json
-|-- assets\icon.png
-|-- examples\
-|-- hooks\
-|-- mcp-server\
-|   |-- package.json
-|   |-- tsconfig.json
-|   |-- scripts\e2e.ts
-|   |-- src\
-|   `-- test\
-|-- skills\
-|   |-- codedna-orchestrator\SKILL.md
-|   |-- requirement-capture\SKILL.md
-|   |-- reverse-analysis\SKILL.md
-|   |-- pairing-review\SKILL.md
-|   |-- codex-task-pack\SKILL.md
-|   |-- code-review\SKILL.md
-|   |-- test-planner\SKILL.md
-|   |-- bug-repair\SKILL.md
-|   `-- memory-evolution\SKILL.md
-|-- README.md
-`-- LICENSE
+.codex-plugin/plugin.json
+.agents/plugins/marketplace.json
+.mcp.json
+skills/
+mcp-server/
+assets/
+docs/
+examples/
 ```
 
-## 4. Install Dependencies
-
-Requirements:
-
-- Node.js 20 or newer.
-- npm.
-- Codex with local plugin support.
-
-Install MCP server dependencies:
+构建 MCP server：
 
 ```powershell
-cd C:\path\to\codedna-plugin\mcp-server
+cd mcp-server
 npm ci
-```
-
-## 5. Build The MCP Server
-
-```powershell
-cd C:\path\to\codedna-plugin\mcp-server
 npm run build
 ```
 
-The plugin MCP config is:
-
-```json
-{
-  "mcpServers": {
-    "codedna": {
-      "command": "node",
-      "args": ["./mcp-server/dist/server.js"],
-      "env": {
-        "CODEDNA_DATA_DIR": "./data"
-      }
-    }
-  }
-}
-```
-
-Codex starts this command from the plugin root:
-
-```text
-C:\path\to\codedna-plugin
-```
-
-## 6. Start The MCP Server Locally
-
-For a direct stdio server run:
-
-```powershell
-cd C:\path\to\codedna-plugin\mcp-server
-npm run build
-npm start
-```
-
-`npm start` waits for an MCP client on stdio. In normal plugin use, Codex starts the server through `.mcp.json`.
-
-## 7. Install Into Codex Plugin
-
-This repository includes a marketplace at:
-
-```text
-C:\path\to\codedna-plugin\.agents\plugins\marketplace.json
-```
-
-For GitHub installation in Codex App, add a plugin marketplace with:
-
-```text
-Source: https://github.com/ljw47756-hash/codedna-plugin.git
-Git ref: main
-Sparse path: leave blank
-```
-
-For local CLI installation, register the marketplace root:
-
-```powershell
-codex plugin marketplace add C:\path\to\codedna-plugin\.agents\plugins
-```
-
-Install CodeDNA from that marketplace:
-
-```powershell
-codex plugin add codedna-plugin@codedna-local
-```
-
-Start a new Codex thread after installing so Codex loads the plugin skills and MCP tools.
-
-## 8. Test Through The Local Marketplace
-
-The marketplace entry points to the standard plugin package path:
-
-```json
-{
-  "name": "codedna-plugin",
-  "source": {
-    "source": "local",
-    "path": "./plugins/codedna-plugin"
-  },
-  "policy": {
-    "installation": "AVAILABLE",
-    "authentication": "ON_INSTALL"
-  },
-  "category": "Productivity"
-}
-```
-
-The repository keeps the plugin package at:
-
-```text
-C:\path\to\codedna-plugin\plugins\codedna-plugin
-```
-
-Confirm the plugin is loaded by opening a new Codex thread and asking:
-
-```text
-Use CodeDNA to prepare this coding task: add a login page and do not modify unrelated files.
-```
-
-A successful load should make CodeDNA skills available and expose MCP tools named `codedna_*`.
-
-In Codex App, CodeDNA is expected to be visible under Skills and MCP Servers. It may not show as a clickable top-level app-style plugin in the composer menu because it does not provide an app connector.
-
-### Install Screenshot Notes
-
-Add release screenshots here before publishing outside local development:
-
-- `assets/install-marketplace.png`: local marketplace added in Codex.
-- `assets/plugin-enabled.png`: CodeDNA enabled in Codex.
-- `assets/task-pack-result.png`: generated Task Pack visible in a Codex thread.
-- `assets/review-report-result.png`: generated Review Report visible after Codex output review.
-
-## 9. Trigger The CodeDNA Workflow
-
-Use CodeDNA when a request is complex, constrained, multi-file, or needs review.
-
-Example prompt:
-
-```text
-Use CodeDNA to generate a task pack for this request:
-Add a login page with a dark minimal style. Support email login and verification-code login. Do not modify unrelated files. Run tests after completion.
-```
-
-Expected workflow for complex coding work:
-
-1. `codedna_run_full_workflow`
-2. `codedna_build_project_genome` when a project path is available.
-3. `codedna_generate_guardrails`
-4. Codex implements from the generated Markdown and guardrails.
-5. Codex returns changed files, verification evidence, and a diff or summary.
-6. `codedna_review_diff`
-7. `codedna_validate_changes` when guardrails were generated.
-8. `codedna_generate_repair_task` when review fails.
-9. `codedna_generate_test_plan` or `codedna_score_outcome` when planning or acceptance needs more rigor.
-10. `codedna_propose_memory_update` and `codedna_confirm_memory_update` when memory should be saved.
-
-If the pairing score is below 70, CodeDNA should ask for missing information before implementation.
-
-### Recommended First Use Flow
-
-1. Install and enable CodeDNA.
-2. Start a new Codex thread.
-3. Ask CodeDNA to prepare a small constrained task.
-4. Confirm that a Task Pack is generated under `data/tasks/`.
-5. Ask Codex to implement from that Task Pack.
-6. Paste Codex diff or changed-file summary into CodeDNA review.
-7. Confirm that a Diff Review or Review Report is generated under `data/reviews/`.
-
-### Phase 5 Deep Workflow
-
-The fifth-stage workflow adds:
-
-- One-command orchestration through `codedna_run_full_workflow`.
-- Project Genome generation at `.codedna/project-genome.json`.
-- Guardrails before Codex edits files.
-- Diff Review after Codex changes files.
-- Repair Chain generation when review fails.
-- Layered memory with session, project, user, and proposal storage.
-- Task-type test plans for UI, API, bug fix, refactor, and general work.
-- Outcome scoring to decide complete, repair, add tests, or ask the user.
-
-Typical use:
-
-1. Plan the task with `codedna_run_full_workflow`.
-2. Execute only after `codedna_generate_guardrails`.
-3. Review the diff with `codedna_review_diff`.
-4. Generate a repair task with `codedna_generate_repair_task` if needed.
-5. Propose or confirm memory only after scope is clear.
-
-## 10. MCP Tool Reference
-
-- `codedna_load_memory`: loads user preferences, successful patterns, rejected patterns, and task history.
-- `codedna_scan_project`: scans a local project and saves a Project Profile under `data/memory/project_profiles/`.
-- `codedna_build_project_genome`: writes `.codedna/project-genome.json` with architecture, safe edit zones, forbidden zones, tests, and Codex rules.
-- `codedna_run_full_workflow`: runs memory load, project scan, requirement capture, analysis, pairing, and gated task-pack generation.
-- `codedna_parse_requirement`: converts a natural-language request into a Requirement Strand.
-- `codedna_reverse_analyze`: converts the Requirement Strand into technical architecture, modules, risks, tests, rollback, and assumptions.
-- `codedna_pair_strands`: scores the pairing between requirement and analysis.
-- `codedna_generate_task_pack`: writes a copy-ready Codex Task Pack under `data/tasks/`.
-- `codedna_generate_guardrails`: generates allowed files, forbidden files, required tests, safety rules, and response format.
-- `codedna_validate_changes`: checks a diff or changed-file list against guardrails.
-- `codedna_review_diff`: checks real changes for forbidden files, unrelated edits, secrets, dangerous commands, missing tests, and mismatch.
-- `codedna_review_output`: writes a Review Report under `data/reviews/`.
-- `codedna_generate_repair_task`: writes a focused repair prompt under `data/tasks/`.
-- `codedna_propose_memory_update`: creates a session, project, or user memory proposal without directly writing long-term memory.
-- `codedna_confirm_memory_update`: writes confirmed memory to the selected memory layer.
-- `codedna_generate_test_plan`: writes a test plan under `data/test-plans/`.
-- `codedna_score_outcome`: scores requirement match, constraints, code quality, test coverage, architecture consistency, and risk.
-- `codedna_update_memory`: appends or merges local memory under `data/memory/`.
-
-Each tool returns structured JSON through MCP `structuredContent` and also returns formatted JSON text.
-
-## 11. Complete Workflow Example
-
-Input:
-
-```text
-C:\path\to\codedna-plugin\examples\full-workflow\input-requirement.md
-```
-
-Run the full MCP client workflow:
-
-```powershell
-cd C:\path\to\codedna-plugin\mcp-server
-npm run smoke
-```
-
-This command:
-
-- Builds the MCP server.
-- Starts the server through `.mcp.json`.
-- Calls the core MCP workflow through a real MCP stdio client.
-- Writes task, review, and memory artifacts.
-- Updates:
-  - `examples\full-workflow\generated-task-pack.md`
-  - `examples\full-workflow\generated-review-report.md`
-
-### Real Project Test Flow
-
-Run the real-project validation script against this plugin project:
-
-```powershell
-cd C:\path\to\codedna-plugin\mcp-server
-npm run validate:real-project
-```
-
-This writes:
-
-```text
-C:\path\to\codedna-plugin\examples\real-project-validation\validation-report.md
-```
-
-## 12. Output Files
-
-Runtime data is local and ignored by git:
-
-```text
-C:\path\to\codedna-plugin\data
-|-- guardrails\
-|-- memory\
-|   |-- user_preferences.json
-|   |-- user\preferences.json
-|   |-- projects\
-|   |-- sessions\
-|   |-- proposals\
-|   |-- project_profiles\
-|   |-- successful_patterns\
-|   |-- rejected_patterns\
-|   `-- task_history\
-|-- reviews\
-|-- strands\
-|-- test-plans\
-`-- tasks\
-```
-
-Project Genome files are written inside the target project:
-
-```text
-<target-project>\.codedna\project-genome.json
-```
-
-Generated task packs:
-
-```text
-C:\path\to\codedna-plugin\data\tasks
-```
-
-Generated review reports:
-
-```text
-C:\path\to\codedna-plugin\data\reviews
-```
-
-## 13. Common Questions
-
-### Why did CodeDNA block my task?
-
-The pairing score was below 70. Check `missing_information` in the pairing result or task pack, answer the missing questions, then run the workflow again.
-
-### Why are hooks not in plugin.json?
-
-The current plugin validator rejects unsupported manifest fields such as `hooks`. CodeDNA keeps hook guidance in `hooks/` as optional compatibility assets without registering invalid manifest fields.
-
-### Does CodeDNA call external AI APIs?
-
-No. The MCP tools use local rules, local project scanning, and local JSON/Markdown storage.
-
-### What do Review Report verdicts mean?
-
-- `pass`: no issues detected.
-- `pass_with_warnings`: non-blocking concerns such as missing test evidence or missing assumptions.
-- `needs_fix`: fixable issues that should be addressed before accepting.
-- `blocked`: high-risk output such as forbidden file edits, important file deletion, dangerous commands, plaintext API keys, or serious constraint violations.
-
-### How does memory migration work?
-
-CodeDNA writes `schema_version` into `data/memory/user_preferences.json` and task-history records. `MemoryStore.ensureLayout()` migrates older memory files to the current schema before tools use them.
-
-Long-term user memory is written under `data/memory/user/preferences.json` only after explicit remember instructions or proposal confirmation. Current-task details go to session memory, and project rules go to project memory.
-
-### Can I edit generated task packs?
-
-Yes. They are Markdown files under `data/tasks/`. Treat edits as local working notes.
-
-## 14. Windows Path Notes
-
-Use quoted paths when a path contains spaces or non-ASCII directory names:
-
-```powershell
-cd "C:\path\to\codedna-plugin\mcp-server"
-```
-
-The `.mcp.json` paths are relative to the plugin root, not to `mcp-server/`.
-
-If `node` is not on PATH, replace the command in `.mcp.json` with the absolute Node executable path.
-
-## 15. Uninstall Or Disable
-
-If using the Codex app, disable or remove CodeDNA from the plugin settings.
-
-If your Codex CLI supports plugin removal, use:
-
-```powershell
-codex plugin remove codedna-plugin
-```
-
-To remove the local marketplace registration, use the Codex marketplace management command for your installed Codex version, or remove it through the Codex app plugin settings.
-
-Generated local data can be deleted manually:
-
-```powershell
-Remove-Item -LiteralPath C:\path\to\codedna-plugin\data -Recurse -Force
-```
-
-## 16. Extension Plan
-
-Planned next steps:
-
-- Add richer project scanners for more frameworks.
-- Add stronger semantic pairing rules.
-- Add more real-world review checks for security and performance.
-- Add optional hook registration when the plugin validator supports it.
-- Add marketplace screenshots and release packaging.
-- Add migration tools for memory schema changes.
-
-## More Documentation
-
-- [Windows install guide](docs/INSTALL_WINDOWS.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Workflow examples](docs/WORKFLOW_EXAMPLES.md)
-- [Release checklist](RELEASE_CHECKLIST.md)
-- [Changelog](CHANGELOG.md)
-
-## Verification Commands
-
-Run all checks before publishing or reinstalling:
-
-```powershell
-cd C:\path\to\codedna-plugin\mcp-server
-npm test
-npm run build
-npm run smoke
-npm run validate:real-project
-npm run release:check
-```
-
-Validate the plugin manifest:
+验证插件 manifest：
 
 ```powershell
 python "%USERPROFILE%\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py" "C:\path\to\codedna-plugin"
 ```
+
+## 注意
+
+公开文档只描述 CodeDNA 的安装方式、使用场景和调用方式，不展开内部工作流实现细节。完整能力请以插件实际运行效果为准。
