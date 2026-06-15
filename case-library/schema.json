@@ -1,0 +1,33 @@
+{
+  "description": "Public-safe CodeDNA case library metadata. Entries intentionally exclude raw source body, code, patches, and diffs.",
+  "required_common_fields": [
+    "id",
+    "category",
+    "public_safe",
+    "license",
+    "summary",
+    "codedna_pattern",
+    "guardrail",
+    "tags"
+  ],
+  "forbidden_fields": [
+    "raw_body",
+    "diff",
+    "code",
+    "source_path",
+    "private_source_path"
+  ],
+  "retained_effect_count": 651,
+  "retained_success_count": 651,
+  "retained_failure_count": 651,
+  "public_case_counts": {
+    "swe-bench-verified": 100,
+    "codex-github": 100,
+    "mcp-failures": 50,
+    "agent-failures": 50,
+    "ai-coding-pr-outcomes": 50,
+    "rag-knowledge-failures": 50,
+    "security-incidents": 30,
+    "successful-architectures": 50
+  }
+}

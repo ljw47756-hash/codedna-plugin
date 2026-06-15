@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-06-15T16:05:41.180Z",
+  "sources": [
+    {
+      "name": "SWE-bench/SWE-bench",
+      "url": "https://github.com/SWE-bench/SWE-bench",
+      "license": "MIT",
+      "usage": "Real-world GitHub issue resolution benchmark metadata.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "princeton-nlp/SWE-bench_Verified",
+      "url": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified",
+      "license": "MIT",
+      "usage": "Verified SWE-bench row metadata without patches, problem body, or code.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "openai/codex",
+      "url": "https://github.com/openai/codex",
+      "license": "Public GitHub metadata",
+      "usage": "Codex issue and PR metadata for coding-agent workflow cases.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "modelcontextprotocol/typescript-sdk",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk",
+      "license": "MIT",
+      "usage": "MCP issue and PR metadata for startup, protocol, and SDK failure patterns.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "modelcontextprotocol/modelcontextprotocol",
+      "url": "https://github.com/modelcontextprotocol/modelcontextprotocol",
+      "license": "MIT",
+      "usage": "MCP specification issue and PR metadata.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "mem0ai/mem0",
+      "url": "https://github.com/mem0ai/mem0",
+      "license": "Apache-2.0",
+      "usage": "Agent memory architecture and issue metadata.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "Gentleman-Programming/engram",
+      "url": "https://github.com/Gentleman-Programming/engram",
+      "license": "MIT",
+      "usage": "Persistent coding-agent memory MCP architecture reference.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "DeusData/codebase-memory-mcp",
+      "url": "https://github.com/DeusData/codebase-memory-mcp",
+      "license": "MIT",
+      "usage": "Codebase memory MCP and project knowledge graph reference.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "alioshr/memory-bank-mcp",
+      "url": "https://github.com/alioshr/memory-bank-mcp",
+      "license": "MIT",
+      "usage": "Memory bank MCP reference.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "shaneholloman/mcp-knowledge-graph",
+      "url": "https://github.com/shaneholloman/mcp-knowledge-graph",
+      "license": "MIT",
+      "usage": "Local knowledge graph memory MCP reference.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "volcengine/OpenViking",
+      "url": "https://github.com/volcengine/OpenViking",
+      "license": "AGPL-3.0",
+      "usage": "Concept-only context database reference; no code copied or linked into runtime.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "langchain-ai/langchain",
+      "url": "https://github.com/langchain-ai/langchain",
+      "license": "MIT",
+      "usage": "RAG, retrieval, and chain issue metadata.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "deepset-ai/haystack",
+      "url": "https://github.com/deepset-ai/haystack",
+      "license": "Apache-2.0",
+      "usage": "RAG pipeline and retrieval architecture issue metadata.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    },
+    {
+      "name": "GitHub Advisory Database",
+      "url": "https://github.com/advisories",
+      "license": "Public advisory metadata",
+      "usage": "Security advisory metadata without exploit code.",
+      "public_safe_rule": "Store links, identifiers, short summaries, and CodeDNA patterns only; never store raw body, code, patches, or diffs."
+    }
+  ]
+}
