@@ -123,33 +123,87 @@ function itemConfidence(pairType, source, candidate) {
 function semanticGroups(pairType) {
     const shared = [
         {
-            requirement: ["login", "auth", "authentication", "email", "verification-code", "password", "session"],
-            analysis: ["auth", "authentication", "form", "validation", "security", "session", "login"],
-            confidence: 0.84
-        },
-        {
-            requirement: ["page", "screen", "ui", "interface", "component", "layout"],
-            analysis: ["ui", "component", "route", "frontend", "view", "page"],
-            confidence: 0.8
-        },
-        {
-            requirement: ["style", "dark", "minimal", "theme", "visual", "clean"],
-            analysis: ["style", "theme", "design", "ui", "visual", "component"],
-            confidence: 0.82
-        },
-        {
-            requirement: ["test", "tests", "verify", "verification", "acceptance", "criteria"],
-            analysis: ["test", "tests", "verify", "verification", "lint", "build", "manual"],
+            requirement: ["cli", "command", "script", "helper", "terminal", "shell", "powershell"],
+            analysis: ["cli", "command", "entrypoint", "script", "helper", "terminal", "shell", "runner"],
             confidence: 0.86
         },
         {
-            requirement: ["memory", "preference", "pattern", "history", "reuse"],
-            analysis: ["memory", "pattern", "reuse", "preference", "assumption", "architecture"],
+            requirement: ["login", "auth", "authentication", "email", "verification-code", "password", "session", "登录", "认证", "邮箱", "验证码", "密码", "会话", "权限"],
+            analysis: ["auth", "authentication", "form", "validation", "security", "session", "login", "认证", "表单", "校验", "安全", "登录"],
+            confidence: 0.84
+        },
+        {
+            requirement: ["page", "screen", "ui", "interface", "component", "layout", "页面", "界面", "组件", "布局", "前端", "视图"],
+            analysis: ["ui", "component", "route", "frontend", "view", "page", "组件", "路由", "前端", "视图", "页面"],
+            confidence: 0.8
+        },
+        {
+            requirement: ["style", "dark", "minimal", "theme", "visual", "clean", "风格", "深色", "极简", "主题", "视觉", "清爽", "简洁"],
+            analysis: ["style", "theme", "design", "ui", "visual", "component", "样式", "主题", "设计", "视觉", "组件"],
+            confidence: 0.82
+        },
+        {
+            requirement: ["test", "tests", "verify", "verification", "acceptance", "criteria", "测试", "回归测试", "验证", "校验", "验收", "标准", "运行", "通过"],
+            analysis: ["test", "tests", "verify", "verification", "lint", "build", "manual", "测试", "验证", "校验", "编译", "构建", "手动"],
+            confidence: 0.86
+        },
+        {
+            requirement: ["memory", "preference", "pattern", "history", "reuse", "记忆", "偏好", "模式", "历史", "复用", "习惯"],
+            analysis: ["memory", "pattern", "reuse", "preference", "assumption", "architecture", "记忆", "模式", "复用", "偏好", "假设", "架构"],
             confidence: 0.76
         },
         {
-            requirement: ["unrelated", "scope", "scoped", "avoid", "forbid", "modify", "constraint"],
-            analysis: ["risk", "guard", "constraint", "scoped", "unrelated", "review"],
+            requirement: [
+                "unrelated",
+                "scope",
+                "sections",
+                "section",
+                "complete",
+                "check",
+                "check off",
+                "scoped",
+                "avoid",
+                "forbid",
+                "modify",
+                "constraint",
+                "不要",
+                "不能",
+                "禁止",
+                "避免",
+                "只允许",
+                "只能",
+                "不要改",
+                "不要修改",
+                "约束",
+                "范围",
+                "无关"
+            ],
+            analysis: ["risk", "guard", "constraint", "scoped", "unrelated", "review", "checklist", "coverage", "verifier", "风险", "保护", "约束", "范围", "无关", "审查", "守护"],
+            confidence: 0.86
+        },
+        {
+            requirement: ["privacy", "secret", "internal", "disclose", "leak", "copy", "plagiarism", "公开", "暴露", "泄露", "保密", "抄袭", "内部", "详细能力"],
+            analysis: ["risk", "guard", "security", "documentation", "review", "constraint", "风险", "保护", "安全", "文档", "审查", "约束"],
+            confidence: 0.84
+        },
+        {
+            requirement: ["readme", "docs", "documentation", "homepage", "guide", "文档", "说明", "主页", "仓库主页", "安装说明"],
+            analysis: ["documentation", "readme", "docs", "guide", "review", "文档", "说明", "指南", "审查"],
+            confidence: 0.82
+        },
+        {
+            requirement: ["mcp", "tool", "tools", "server", "handler", "工具", "服务器", "完整逻辑", "注册"],
+            analysis: ["mcp", "tool", "tools", "server", "handler", "registration", "工具", "服务器", "处理器", "注册"],
+            confidence: 0.86
+        },
+        {
+            requirement: ["phase", "stage", "batch", "continue", "wait", "first", "second", "阶段", "分批", "继续", "等待", "第一批", "第二批"],
+            analysis: ["phase", "phased", "workflow", "continuation", "gate", "batch", "阶段", "分批", "继续", "门控", "等待"],
+            confidence: 0.86
+        },
+        {
+            requirement: ["version", "cache", "plugin", "plugin.json", "manifest", "bump", "版本", "缓存", "清单"],
+            analysis: ["version", "cache", "plugin", "manifest", "updater", "cache-busting", "版本", "缓存", "清单"],
             confidence: 0.86
         }
     ];
@@ -163,7 +217,10 @@ function semanticGroups(pairType) {
         return shared.filter((group) => group.requirement.includes("test"));
     }
     if (pairType === "Constraint <-> Risk") {
-        return shared.filter((group) => group.requirement.includes("constraint"));
+        return shared.filter((group) => group.requirement.includes("constraint") ||
+            group.requirement.includes("privacy") ||
+            group.requirement.includes("disclose") ||
+            group.requirement.includes("公开"));
     }
     if (pairType === "Preference <-> Pattern") {
         return shared.filter((group) => group.requirement.includes("style") || group.requirement.includes("memory"));

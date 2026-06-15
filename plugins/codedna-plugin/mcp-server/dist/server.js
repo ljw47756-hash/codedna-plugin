@@ -15902,10 +15902,10 @@ function normalizeText(value) {
   return String(value ?? "").replace(/\r/g, "\n").replace(/\s+/g, " ").trim();
 }
 function splitSentences(value) {
-  return value.split(/(?<=[.!?;])\s+|[;]\s*|\n+/u).map((part) => part.trim().replace(/^[,.\s]+|[,.\s]+$/g, "")).filter(Boolean);
+  return value.split(/(?<=[.!?])\s+|(?<=[。！？；])\s*|[;；]\s*|\n+/u).map((part) => part.trim().replace(/^[,，.。\s]+|[,，.。\s]+$/g, "")).filter(Boolean);
 }
 function splitClauses(value) {
-  const parts = value.split(/[,]|(?:\s+and\s+)|(?:\s+with\s+)/iu).map((part) => part.trim().replace(/^[.\s]+|[.\s]+$/g, "")).filter(Boolean);
+  const parts = value.split(/[,，、]|(?:\s+and\s+)|(?:\s+with\s+)|(?:同时|但是|不过|然后|另外|并且|以及)/iu).map((part) => part.trim().replace(/^[.。\s]+|[.。\s]+$/g, "")).filter(Boolean);
   return parts.length > 0 ? parts : [value.trim()];
 }
 function uniqueStrings(items) {
@@ -15951,27 +15951,396 @@ function similarity(left, right) {
   return overlap / Math.max(leftTokens.size, rightTokens.size);
 }
 
+// src/language/zhLexicon.ts
+var zhFeatureHints = [
+  "\u6DFB\u52A0",
+  "\u65B0\u589E",
+  "\u521B\u5EFA",
+  "\u751F\u6210",
+  "\u5B9E\u73B0",
+  "\u652F\u6301",
+  "\u4FEE\u590D",
+  "\u4F18\u5316",
+  "\u91CD\u6784",
+  "\u66F4\u65B0",
+  "\u68C0\u67E5",
+  "\u5BA1\u67E5",
+  "\u626B\u63CF",
+  "\u4FDD\u5B58",
+  "\u4E0A\u4F20",
+  "\u5B89\u88C5",
+  "\u542F\u7528",
+  "\u89E3\u6790",
+  "\u8FC1\u79FB",
+  "\u66FF\u6362",
+  "\u6362\u6210",
+  "\u8FDB\u5165",
+  "\u5B8C\u5584",
+  "\u8865",
+  "\u65B9\u6848",
+  "\u6307\u5BFC",
+  "\u6392\u67E5",
+  "\u6CE8\u518C",
+  "\u6253\u5305",
+  "\u53D1\u5E03",
+  "\u90E8\u7F72",
+  "\u6587\u6863",
+  "\u8BF4\u660E",
+  "\u4EFB\u52A1\u5305",
+  "\u62A5\u544A",
+  "\u6D4B\u8BD5\u8BA1\u5212",
+  "\u56DE\u5F52"
+];
+var zhConstraintHints = [
+  "\u4E0D\u8981",
+  "\u522B",
+  "\u4E0D\u518D",
+  "\u4E0D\u8BB8",
+  "\u4E0D\u80FD",
+  "\u4E0D\u7528",
+  "\u4E0D\u5F97",
+  "\u7981\u6B62",
+  "\u907F\u514D",
+  "\u53EA\u5141\u8BB8",
+  "\u53EA\u505A",
+  "\u53EA\u6539",
+  "\u53EA\u80FD",
+  "\u4EC5",
+  "\u5FC5\u987B",
+  "\u52A1\u5FC5",
+  "\u4E00\u5B9A\u8981",
+  "\u4FDD\u7559",
+  "\u4E0D\u8981\u6539",
+  "\u4E0D\u8981\u4FEE\u6539",
+  "\u4E0D\u8981\u63D0\u4EA4",
+  "\u4E0D\u8981\u4E0A\u4F20",
+  "\u4E0D\u8981\u7EE7\u7EED",
+  "\u4E0D\u8981\u7F29\u51CF",
+  "\u5148\u4E0D\u8981",
+  "\u5148\u4E0D\u7528",
+  "\u9664\u975E",
+  "\u7B49\u5F85\u6211\u8BF4",
+  "\u7B49\u6211\u8BF4",
+  "\u4E0D\u8981\u518D",
+  "\u4E0D\u5141\u8BB8",
+  "\u4E0D\u53EF",
+  "\u4E0D\u80FD\u516C\u5F00",
+  "\u4E0D\u8981\u516C\u5F00",
+  "\u4E0D\u8981\u66B4\u9732",
+  "\u522B\u66B4\u9732",
+  "\u9632\u6B62\u6284\u88AD",
+  "\u907F\u514D\u6284\u88AD",
+  "\u4E0D\u8981\u6CC4\u9732",
+  "\u8303\u56F4\u5185",
+  "\u4E0D\u80FD\u52A8",
+  "\u4E0D\u8981\u52A8",
+  "\u4E0D\u5927\u6539"
+];
+var zhPreferenceHints = [
+  "\u504F\u597D",
+  "\u98CE\u683C",
+  "\u7B80\u5355",
+  "\u7B80\u6D01",
+  "\u6E05\u6670",
+  "\u4E00\u81F4",
+  "\u7D27\u51D1",
+  "\u53EF\u8BFB",
+  "\u7528\u4E2D\u6587",
+  "\u7528\u82F1\u6587",
+  "\u4E2D\u6587\u63CF\u8FF0",
+  "\u82F1\u6587",
+  "\u4E00\u6B65\u6B65",
+  "\u5148\u7ED9\u65B9\u6848",
+  "\u4E0D\u8981\u592A\u8BE6\u7EC6",
+  "\u907F\u514D\u66B4\u9732",
+  "\u4FDD\u5BC6",
+  "\u8BF4\u660E",
+  "\u63A8\u8350",
+  "\u5EFA\u8BAE",
+  "\u9002\u5408",
+  "\u4F18\u5148",
+  "\u6700\u597D",
+  "\u8BE6\u7EC6",
+  "\u6982\u62EC",
+  "\u771F\u5B9E",
+  "\u7A33\u5B9A"
+];
+var zhAcceptanceHints = [
+  "\u9A8C\u6536",
+  "\u9A8C\u8BC1",
+  "\u6821\u9A8C",
+  "\u68C0\u67E5",
+  "\u5BA1\u67E5",
+  "\u6267\u884C\u540E",
+  "diff",
+  "\u6D4B\u8BD5",
+  "\u56DE\u5F52\u6D4B\u8BD5",
+  "\u8FD0\u884C",
+  "\u901A\u8FC7",
+  "\u5B8C\u6210\u540E",
+  "\u6700\u540E",
+  "\u8F93\u51FA",
+  "\u544A\u8BC9\u6211",
+  "\u9010\u9879\u6253\u52FE",
+  "\u7ED3\u8BBA",
+  "\u7ED3\u679C",
+  "\u7F16\u8BD1",
+  "\u6784\u5EFA",
+  "\u8DD1\u901A",
+  "\u786E\u8BA4",
+  "\u5217\u51FA",
+  "\u603B\u7ED3",
+  "\u62A5\u544A",
+  "\u5BF9\u7167",
+  "\u9A8C\u6536\u6210\u679C",
+  "\u901A\u8FC7\u7387"
+];
+var zhPlanOnlyHints = [
+  "\u5148\u7ED9\u65B9\u6848",
+  "\u53EA\u7ED9\u65B9\u6848",
+  "\u5148\u4E0D\u7528\u6539",
+  "\u5148\u4E0D\u8981\u6539",
+  "\u4E0D\u7528\u6539\u4EE3\u7801",
+  "\u4E0D\u8981\u6539\u4EE3\u7801",
+  "\u4E0D\u8981\u6539\u529F\u80FD\u4EE3\u7801",
+  "\u4E0D\u6539\u4EE3\u7801",
+  "\u5148\u4E0D\u7528\u63D0\u4EA4",
+  "\u53EA\u5206\u6790",
+  "\u53EA\u6392\u67E5",
+  "\u53EA\u505A\u8BCA\u65AD",
+  "\u5148\u6392\u67E5",
+  "\u5148\u68C0\u67E5",
+  "\u5148\u770B\u539F\u56E0",
+  "\u5148\u5B9A\u4F4D\u539F\u56E0",
+  "\u5148\u4E0D\u7528\u518D\u6539"
+];
+var zhReviewOnlyHints = [
+  "\u6700\u7EC8\u68C0\u67E5",
+  "\u6700\u7EC8\u9A8C\u6536",
+  "\u4EA4\u4ED8\u68C0\u67E5",
+  "\u5BA1\u67E5\u7ED3\u679C",
+  "\u68C0\u67E5\u662F\u5426",
+  "\u68C0\u67E5\u9690\u79C1\u6570\u636E",
+  "\u98CE\u9669\u7ED3\u8BBA",
+  "\u7ED9\u98CE\u9669\u7ED3\u8BBA",
+  "\u4E0D\u8981\u7EE7\u7EED\u65B0\u589E",
+  "\u4E0D\u8981\u5927\u6539",
+  "\u53EA\u505A\u9A8C\u6536",
+  "\u53EA\u505A\u6700\u7EC8\u68C0\u67E5",
+  "\u9A8C\u6536\u9636\u6BB5"
+];
+var zhImplementationHints = [
+  "\u5F00\u59CB\u4F18\u5316",
+  "\u5F00\u59CB\u5F00\u53D1",
+  "\u76F4\u63A5\u5B9E\u73B0",
+  "\u5E2E\u6211\u4FEE\u590D",
+  "\u4FEE\u590D",
+  "\u751F\u6210\u4EE3\u7801",
+  "\u5199\u5B8C\u6574\u4EE3\u7801",
+  "\u63D0\u4EA4\u5E76\u63A8\u9001",
+  "\u4E0A\u4F20\u5230 GitHub",
+  "\u5F00\u59CB\u6539",
+  "\u4FEE\u6539",
+  "\u53EA\u6539",
+  "\u6784\u5EFA",
+  "\u6253\u5305",
+  "\u8FD0\u884C npm run build",
+  "bump"
+];
+var zhPrivacyHints = [
+  "\u4E0D\u8981\u516C\u5F00",
+  "\u4E0D\u8981\u66B4\u9732",
+  "\u907F\u514D\u522B\u4EBA\u6284\u88AD",
+  "\u907F\u514D\u6284\u88AD",
+  "\u4FDD\u5BC6",
+  "\u4E0D\u8981\u6CC4\u9732",
+  "\u4E0D\u8981\u628A\u80FD\u529B\u5177\u4F53\u8BF4\u51FA\u53BB",
+  "\u4E0D\u8981\u628A\u6240\u6709\u5185\u90E8\u80FD\u529B",
+  "\u5185\u90E8\u80FD\u529B\u5177\u4F53\u8BF4\u51FA\u53BB",
+  "\u4E0D\u8981\u8BF4\u51FA\u53BB",
+  "\u7167\u7740\u6284",
+  "do not disclose",
+  "do not reveal",
+  "internal capability",
+  "internal workflow",
+  "internal workflows",
+  "implementation details",
+  "proprietary"
+];
+function classifyClause(clause) {
+  const labels = /* @__PURE__ */ new Set();
+  const matchedRules = [];
+  addIf(labels, matchedRules, "constraint", "zh_constraint", containsAny(clause, zhConstraintHints));
+  addIf(labels, matchedRules, "feature", "zh_feature", containsAny(clause, zhFeatureHints));
+  addIf(labels, matchedRules, "preference", "zh_preference", containsAny(clause, zhPreferenceHints));
+  addIf(labels, matchedRules, "acceptance", "zh_acceptance", containsAny(clause, zhAcceptanceHints) || /npm\s+(test|run|run\s+build)|pnpm|yarn/iu.test(clause));
+  addIf(labels, matchedRules, "privacy", "zh_privacy", containsAny(clause, zhPrivacyHints));
+  addIf(labels, matchedRules, "phased", "zh_phased", isPhasedInstruction(clause));
+  addIf(labels, matchedRules, "correction", "zh_correction", extractCorrections(clause).length > 0 || containsAny(clause, ["\u505C\u6B62\u5F53\u524D\u65B9\u5411", "\u6539\u6210", "\u6362\u6210"]));
+  if (labels.has("privacy")) {
+    labels.add("constraint");
+  }
+  if (labels.has("phased") && /等我说|等待我说|继续|下一批/u.test(clause)) {
+    labels.add("constraint");
+  }
+  if (labels.has("correction")) {
+    labels.add("constraint");
+    labels.add("feature");
+  }
+  if (/只给方案|先给方案|不用改代码|不要改代码|不改代码/u.test(clause)) {
+    labels.add("constraint");
+    labels.add("preference");
+  }
+  const confidence = Math.min(0.98, 0.45 + labels.size * 0.12 + matchedRules.length * 0.05);
+  return {
+    text: clause,
+    labels: [...labels],
+    confidence,
+    matched_rules: matchedRules
+  };
+}
+function detectTaskMode(request) {
+  if (containsAny(request, zhPlanOnlyHints) || /(?:只报告|只输出|只给)\s*(?:risks?|风险|结论)/iu.test(request) || /不要改\s*(?:files?|文件|代码)/iu.test(request) || /\b(plan only|proposal only|do not edit|do not change code|do not change files|no code changes|diagnose|diagnosis|do not change business logic)\b/iu.test(request)) {
+    return "plan-only";
+  }
+  if (containsAny(request, zhReviewOnlyHints) || isValidationOnlyRequest(request) || isInspectionOnlyRequest(request) || /\b(review only|diff only|final check|delivery check|do not add new features|do not continue development)\b/iu.test(request) || /\breview\b.{0,40}\bonly\b/iu.test(request)) {
+    return "review-only";
+  }
+  if (containsAny(request, zhImplementationHints) || /\b(implement|fix|build|create|add|commit|push)\b/iu.test(request)) {
+    return "implementation";
+  }
+  return "implementation";
+}
+function isValidationOnlyRequest(request) {
+  const isEnglishValidation = /\b(run|rerun|check|validate)\b/iu.test(request) && /\b(report|summarize|tell|show|list)\b.{0,50}\b(result|results|status|statuses|log|logs)\b/iu.test(request) && !/\b(fix|implement|change|modify|create|update|commit|push|edit|write)\b/iu.test(request);
+  if (isEnglishValidation) {
+    return true;
+  }
+  return /(重新运行|再次运行|重跑|跑一遍|跑一次)/u.test(request) && /(告诉我|给我|输出|汇总|总结).{0,12}(结果|结论|日志|通过情况)/u.test(request) && !/(修复|修改|实现|生成|提交|推送|改代码|写入|更新)/u.test(request);
+}
+function isInspectionOnlyRequest(request) {
+  const isEnglishInspection = (/\b(check|inspect|audit|review)\b.{0,60}\b(privacy|secret|token|api\s*key|risk|memory)\b/iu.test(request) && /\b(report|summarize|tell|show|list)\b.{0,60}\b(risk|conclusion|result|results|finding|findings)\b/iu.test(request) || /\b(check|confirm|inspect|validate)\b.{0,80}\b(mcp|plugin|config|format|json)\b/iu.test(request) && /\b(tell|report|confirm|show)\b.{0,80}\b(if|whether|required|needed|manual)\b/iu.test(request)) && !/\b(fix|implement|change|modify|create|update|commit|push|edit|write)\b/iu.test(request);
+  if (isEnglishInspection) {
+    return true;
+  }
+  return /(重点检查|检查|确认|核对)/u.test(request) && /(告诉我|给我|输出|汇总|总结|是否需要|是否)/u.test(request) && !/(修复|修改|实现|生成|提交|推送|改代码|写入|更新|创建|新增)/u.test(request);
+}
+function extractCorrections(text) {
+  const corrections = [];
+  const patterns = [
+    /不是\s*([^，。；,.]+?)\s*[，,]?\s*(?:而是|是)\s*([^，。；,.]+)/gu,
+    /不要\s*([^，。；,.]+?)\s*[，,]?\s*(?:要|改成|换成)\s*([^，。；,.]+)/gu,
+    /停止当前方向\s*[，,]?\s*(?:改成|换成|要做)\s*([^，。；,.]+)/gu,
+    /(?:this\s+is\s+)?not\s+(?:a|an|the)?\s*([^.;,]+?)\s*(?:;|,|\s+but\s+)\s*(?:make\s+it\s+|it\s+is\s+|it's\s+|use\s+|build\s+)(?:a|an|the)?\s*([^.;,]+)/giu,
+    /not\s+(?:a|an|the)?\s*([^.;,]+?)\s+but\s+(?:a|an|the)?\s*([^.;,]+)/giu
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      if (match.length === 2) {
+        corrections.push({
+          rejected_direction: "current direction",
+          required_direction: cleanDirective(match[1])
+        });
+      } else if (match.length >= 3) {
+        corrections.push({
+          rejected_direction: cleanDirective(match[1]),
+          required_direction: cleanDirective(match[2])
+        });
+      }
+    }
+  }
+  return corrections.filter((item) => item.required_direction.length > 0);
+}
+function isPhasedInstruction(text) {
+  return /先.+?(再|然后|最后)/u.test(text) || /(等我说|等待我说).{0,12}(继续|下一步|下一批)/u.test(text) || /(第一批|第二批|下一批|分批)/u.test(text) || /\b(first|phase one|stage one|batch one).{0,80}\b(then|wait|continue|second|next)\b/iu.test(text) || /\bwait until I say continue\b/iu.test(text);
+}
+function isPrivacyInstruction(text) {
+  return containsAny(text, zhPrivacyHints);
+}
+function taskModeNote(mode) {
+  if (mode === "plan-only") {
+    return "Task mode: plan-only; produce analysis or a proposal before any code edit.";
+  }
+  if (mode === "review-only") {
+    return "Task mode: review-only; inspect, validate, and summarize without broad implementation.";
+  }
+  return "Task mode: implementation; prepare scoped changes and verification.";
+}
+function addIf(labels, rules, label, rule, condition) {
+  if (condition) {
+    labels.add(label);
+    rules.push(rule);
+  }
+}
+function cleanDirective(value) {
+  return value.trim().replace(/^继续|^再|^要/u, "").trim();
+}
+
 // src/tools/parseRequirement.ts
 var featureHints = [
   "add",
+  "bump",
   "build",
   "create",
   "generate",
   "implement",
   "support",
+  "improve",
   "scan",
   "save",
   "review",
+  "diagnose",
+  "troubleshoot",
   "page",
   "screen",
   "feature",
   "module",
   "workflow",
+  "memory",
+  "memory update",
+  "long-term memory",
   "tool",
   "integration",
+  "include",
+  "built",
+  "entrypoint",
+  "plan",
+  "optimization",
+  "optimize",
+  "prepare",
+  "repository",
+  "github",
+  "readme",
+  "docs",
   "repair",
-  "fix"
+  "fix",
+  "\u6DFB\u52A0",
+  "\u65B0\u589E",
+  "\u521B\u5EFA",
+  "\u751F\u6210",
+  "\u5B9E\u73B0",
+  "\u652F\u6301",
+  "\u4FEE\u590D",
+  "\u4F18\u5316",
+  "\u91CD\u6784",
+  "\u68C0\u67E5",
+  "\u5BA1\u67E5",
+  "\u626B\u63CF",
+  "\u4FDD\u5B58",
+  "\u4E0A\u4F20",
+  "\u5B89\u88C5",
+  "\u542F\u7528",
+  "\u89E3\u6790",
+  "\u8FC1\u79FB",
+  "\u66FF\u6362",
+  "\u6362\u6210",
+  "\u8FDB\u5165",
+  "\u5B8C\u5584",
+  "\u8865",
+  "\u65B9\u6848",
+  "\u6307\u5BFC"
 ];
+featureHints.push(...zhFeatureHints);
 var constraintHints = [
   "must",
   "only",
@@ -15986,8 +16355,41 @@ var constraintHints = [
   "keep",
   "no unrelated",
   "do not modify",
-  "must not"
+  "must not",
+  "not normal",
+  "not normal install",
+  "fallback only",
+  "\u4E0D\u8981",
+  "\u522B",
+  "\u4E0D\u518D",
+  "\u4E0D\u8BB8",
+  "\u4E0D\u80FD",
+  "\u4E0D\u7528",
+  "\u4E0D\u5F97",
+  "\u7981\u6B62",
+  "\u907F\u514D",
+  "\u53EA\u5141\u8BB8",
+  "\u53EA\u505A",
+  "\u53EA\u80FD",
+  "\u4EC5",
+  "\u5FC5\u987B",
+  "\u52A1\u5FC5",
+  "\u4E00\u5B9A\u8981",
+  "\u4FDD\u7559",
+  "\u4E0D\u8981\u6539",
+  "\u4E0D\u8981\u4FEE\u6539",
+  "\u4E0D\u8981\u63D0\u4EA4",
+  "\u4E0D\u8981\u4E0A\u4F20",
+  "\u4E0D\u8981\u7EE7\u7EED",
+  "\u4E0D\u8981\u7F29\u51CF",
+  "\u5148\u4E0D\u8981",
+  "\u5148\u4E0D\u7528",
+  "\u9664\u975E",
+  "\u7B49\u5F85\u6211\u8BF4",
+  "\u7B49\u6211\u8BF4",
+  "\u4E0D\u8981\u518D"
 ];
+constraintHints.push(...zhConstraintHints);
 var preferenceHints = [
   "prefer",
   "preference",
@@ -16000,8 +16402,27 @@ var preferenceHints = [
   "technical",
   "compact",
   "scannable",
-  "consistent"
+  "consistent",
+  "\u504F\u597D",
+  "\u98CE\u683C",
+  "\u7B80\u5355",
+  "\u7B80\u6D01",
+  "\u6E05\u6670",
+  "\u4E00\u81F4",
+  "\u7D27\u51D1",
+  "\u53EF\u8BFB",
+  "\u7528\u4E2D\u6587",
+  "\u7528\u82F1\u6587",
+  "\u4E2D\u6587\u63CF\u8FF0",
+  "\u82F1\u6587",
+  "\u4E00\u6B65\u6B65",
+  "\u5148\u7ED9\u65B9\u6848",
+  "\u4E0D\u8981\u592A\u8BE6\u7EC6",
+  "\u907F\u514D\u66B4\u9732",
+  "\u4FDD\u5BC6",
+  "\u8BF4\u660E"
 ];
+preferenceHints.push(...zhPreferenceHints);
 var acceptanceHints = [
   "acceptance",
   "verify",
@@ -16012,9 +16433,50 @@ var acceptanceHints = [
   "must be able",
   "complete",
   "done",
+  "check off",
+  "check them off",
+  "explain",
+  "sparse path",
+  "summarize",
+  "summary",
+  "review report",
+  "changed files",
+  "ready to accept",
+  "reinstall",
+  "manual add",
+  "risks",
+  "risk conclusion",
+  "next steps",
   "expected",
-  "criteria"
+  "criteria",
+  "validator",
+  "plugin validator",
+  "release:check",
+  "release check",
+  "node -v",
+  "npm -v",
+  "dist/server.js",
+  "\u9A8C\u6536",
+  "\u9A8C\u8BC1",
+  "\u6821\u9A8C",
+  "\u68C0\u67E5",
+  "\u6D4B\u8BD5",
+  "\u56DE\u5F52\u6D4B\u8BD5",
+  "\u8FD0\u884C",
+  "\u901A\u8FC7",
+  "\u5B8C\u6210\u540E",
+  "\u6700\u540E",
+  "\u8F93\u51FA",
+  "\u544A\u8BC9\u6211",
+  "\u9010\u9879\u6253\u52FE",
+  "\u7ED3\u8BBA",
+  "\u7ED3\u679C",
+  "\u7F16\u8BD1",
+  "\u6784\u5EFA",
+  "npm test",
+  "npm run"
 ];
+acceptanceHints.push(...zhAcceptanceHints);
 async function parseRequirement(input, memoryStore2) {
   const request = normalizeText(input.request);
   if (!request) {
@@ -16026,6 +16488,8 @@ async function parseRequirement(input, memoryStore2) {
   const constraints = extractByHints(sentences, constraintHints);
   const preferences = extractByHints(sentences, preferenceHints);
   let acceptanceCriteria = extractByHints(sentences, acceptanceHints);
+  enrichWithClauseClassification(sentences, features, constraints, preferences, acceptanceCriteria);
+  enrichWithStructuredDirectives(request, features, constraints, preferences, acceptanceCriteria);
   const memoryRules = input.memory_rules?.length ? uniqueStrings(input.memory_rules) : await memoryStore2.relatedRules(request);
   if (coreGoal && !features.includes(coreGoal)) {
     features.unshift(coreGoal);
@@ -16033,6 +16497,8 @@ async function parseRequirement(input, memoryStore2) {
   if (acceptanceCriteria.length === 0) {
     acceptanceCriteria = defaultAcceptance(features, constraints);
   }
+  const taskMode = detectTaskMode(request);
+  preferences.push(taskModeNote(taskMode));
   const requirement = {
     original_request: input.request.trim(),
     core_goal: coreGoal,
@@ -16040,7 +16506,7 @@ async function parseRequirement(input, memoryStore2) {
     constraints: uniqueStrings(constraints),
     preferences: uniqueStrings(preferences),
     acceptance_criteria: uniqueStrings(acceptanceCriteria),
-    unknowns: unknowns(request, input.project_profile, features),
+    unknowns: unknowns(request, input.project_profile, features, taskMode),
     priority: priority(request, constraints),
     user_memory_related_rules: memoryRules,
     created_at: nowIso()
@@ -16063,7 +16529,9 @@ function coreGoalFromSentences(sentences) {
   if (sentences.length === 0) {
     return "Clarify and implement the requested Codex coding task";
   }
-  return sentences[0].replace(/^(please|help me|could you|can you)\s*/iu, "").slice(0, 240);
+  const scored = sentences.map((sentence, index) => ({ sentence, index, score: goalScore(sentence, index) })).sort((left, right) => right.score - left.score || left.index - right.index);
+  const selected = scored[0]?.sentence || sentences[0];
+  return cleanGoal(selected).slice(0, 240);
 }
 function extractByHints(sentences, hints, includeContinuation = false) {
   const extracted = [];
@@ -16082,24 +16550,67 @@ function extractByHints(sentences, hints, includeContinuation = false) {
 function looksLikeContinuation(clause) {
   return !containsAny(clause, constraintHints) && !/^(and|or|but)?\s*(without|avoid|do not|don't|never|must not)/iu.test(clause);
 }
-function unknowns(request, projectProfile, features) {
+function enrichWithClauseClassification(sentences, features, constraints, preferences, acceptanceCriteria) {
+  for (const sentence of sentences) {
+    for (const clause of splitClauses(sentence)) {
+      const classification = classifyClause(clause);
+      if (classification.labels.includes("feature")) {
+        features.push(clause);
+      }
+      if (classification.labels.includes("constraint")) {
+        constraints.push(clause);
+      }
+      if (classification.labels.includes("preference")) {
+        preferences.push(clause);
+      }
+      if (classification.labels.includes("acceptance")) {
+        acceptanceCriteria.push(clause);
+      }
+    }
+  }
+}
+function enrichWithStructuredDirectives(request, features, constraints, preferences, acceptanceCriteria) {
+  for (const correction of extractCorrections(request)) {
+    if (correction.required_direction) {
+      features.push(`Required direction: ${correction.required_direction}`);
+    }
+    if (correction.rejected_direction) {
+      constraints.push(`Do not continue rejected direction: ${correction.rejected_direction}`);
+    }
+  }
+  for (const match of request.matchAll(/(?:只修改|只改)\s*([^，。；,.;]+)/gu)) {
+    constraints.push(`\u53EA\u4FEE\u6539 ${match[1].trim()}`);
+  }
+  for (const match of request.matchAll(/\b(?:only\s+modify|only\s+touch|touch\s+only|modify\s+only)\s+([^,.;]+)/giu)) {
+    constraints.push(`Only modify ${match[1].trim()}`);
+  }
+  if (isPhasedInstruction(request)) {
+    constraints.push("Phased execution: finish the current phase and wait for explicit user confirmation before continuing.");
+    acceptanceCriteria.push("Phase output clearly states what was completed and what waits for user confirmation.");
+  }
+  if (isPrivacyInstruction(request)) {
+    constraints.push("Do not disclose detailed internal capability design or implementation-sensitive workflow details.");
+    preferences.push("Public-facing documentation should describe benefits without exposing proprietary implementation details.");
+  }
+}
+function unknowns(request, projectProfile, features, taskMode) {
   const missing = [];
   if (!projectProfile) {
     missing.push("Target project directory has not been scanned yet.");
   }
-  if (!/(test|pytest|verification|verify|acceptance|lint|build)/iu.test(request)) {
+  if (taskMode === "implementation" && !hasVerificationSignal(request) && !isDocumentationOnlyRequest(request)) {
     missing.push("Preferred verification command is not specified.");
   }
-  if (!/(file|directory|path|page|screen|component|api|route|module)/iu.test(request)) {
+  if (taskMode === "implementation" && !hasTargetSignal(request) && !isPlanOnlyRequest(request)) {
     missing.push("Exact files or modules to modify are not fully specified.");
   }
-  if (features.length <= 1 && request.length < 80) {
+  if (taskMode === "implementation" && features.length <= 1 && request.length < 80 && !hasStructuredScopeSignal(request)) {
     missing.push("Feature scope may need more detail before implementation.");
   }
   return uniqueStrings(missing);
 }
 function priority(request, constraints) {
-  if (/(urgent|asap|immediately|today|high priority)/iu.test(request)) {
+  if (/(urgent|asap|immediately|today|high priority|紧急|马上|立即|今天|高优先级)/iu.test(request)) {
     return "high";
   }
   if (constraints.length >= 3) {
@@ -16120,6 +16631,50 @@ function defaultAcceptance(features, constraints) {
   }
   criteria.push("Relevant verification steps can be run or clearly explained.");
   return criteria;
+}
+function goalScore(sentence, index) {
+  let score2 = Math.max(0, 5 - index);
+  const hasFeatureHint = containsAny(sentence, featureHints);
+  if (hasFeatureHint) {
+    score2 += 8;
+  }
+  if (containsAny(sentence, acceptanceHints)) {
+    score2 += hasFeatureHint ? 1 : 4;
+  }
+  if (/(目标|核心|阶段|任务|需求|要做|接下来|下一步|优化哪些|最终交付|最终检查)/iu.test(sentence)) {
+    score2 += 5;
+  }
+  if (containsAny(sentence, constraintHints)) {
+    score2 -= containsAny(sentence, featureHints) ? 3 : 8;
+  }
+  if (/^(现在)?(不要|别|不再|先不要|先不用)/u.test(sentence.trim())) {
+    score2 -= 4;
+  }
+  return score2;
+}
+function cleanGoal(value) {
+  return value.replace(/^(please|help me|could you|can you|请|麻烦|帮我)\s*/iu, "").trim();
+}
+function hasVerificationSignal(request) {
+  return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(
+    request
+  );
+}
+function hasTargetSignal(request) {
+  return /(file|directory|path|page|screen|component|api|route|module|tool|server|mcp|src[\\/]|tests?[\\/]|package\.json|plugin\.json|README|docs?[\\/]|文件|目录|路径|页面|界面|组件|接口|路由|模块|工具|服务器|插件|仓库|项目|服务|配置|脚本)/iu.test(
+    request
+  );
+}
+function isPlanOnlyRequest(request) {
+  return /(plan only|do not edit|no code changes|proposal only|方案|计划|先给我方案|先不用改代码|不用改代码|不要改代码|不改代码|不要提交|先不用提交|只给方案|先不用再改|不要继续开发|最终检查|最终交付验收)/iu.test(
+    request
+  );
+}
+function isDocumentationOnlyRequest(request) {
+  return /(readme|docs|documentation|homepage|guide|文档|说明|主页|仓库主页|安装说明|介绍|描述|总结|写清楚)/iu.test(request);
+}
+function hasStructuredScopeSignal(request) {
+  return /(逐项|对照.+打勾|[0-9一二三四五六七八九十百]+个部分|不要缩减.+范围|文件里?的范围|all\s+\w+\s+sections|check\s+them\s+off|requested\s+scope|do\s+not\s+reduce.+scope)/iu.test(request);
 }
 
 // src/tools/reverseAnalyze.ts
@@ -16188,13 +16743,21 @@ function requiredModules(requirement, frameworks) {
   const text = [...requirement.features, ...requirement.preferences, requirement.core_goal].join(" ").toLowerCase();
   const modules = ["Requirement handling", "Implementation planning", "Verification", "Completion summary"];
   const map = [
-    [/(ui|interface|page|screen|style|layout|visual)/iu, ["UI component", "Style layer"]],
-    [/(api|route|endpoint|controller|request)/iu, ["API route", "Request validation"]],
-    [/(login|auth|authentication|verification-code|password|session)/iu, ["Authentication flow", "Form validation", "Security review"]],
-    [/(scan|scanner|project|profile)/iu, ["Project scanner", "Project profile persistence"]],
-    [/(review|audit|diff|output|report)/iu, ["Review reporter", "Constraint checker"]],
-    [/(test|verification|acceptance|verify|lint|build)/iu, ["Test planner", "Verification runner plan"]],
-    [/(memory|preference|pattern|history|reuse)/iu, ["Memory evolution", "Reusable pattern capture"]]
+    [/(cli|command|script|helper|terminal|shell|powershell)/iu, ["CLI command entrypoint", "Helper script module"]],
+    [/(ui|interface|page|screen|style|layout|visual|页面|界面|组件|布局|样式|视觉)/iu, ["UI component", "Style layer"]],
+    [/(api|route|endpoint|controller|request|接口|路由|端点|请求|控制器)/iu, ["API route", "Request validation"]],
+    [
+      /(login|auth|authentication|verification-code|password|session|登录|验证码|校验码|密码|会话|权限|认证)/iu,
+      ["Authentication flow", "Form validation", "Security review"]
+    ],
+    [/(scan|scanner|project|profile|扫描|项目|画像|结构|分析项目)/iu, ["Project scanner", "Project profile persistence"]],
+    [/(mcp|tools?|server|工具|服务器|完整逻辑|注册)/iu, ["MCP tool handlers", "Server tool registration"]],
+    [/(version|cache|plugin\.json|manifest|bump|版本|缓存|清单)/iu, ["Plugin manifest updater", "Cache-busting version check"]],
+    [/(phase|stage|batch|continue|wait|first|second|阶段|分批|继续|等待|下一批|第一批|第二批)/iu, ["Phased workflow controller", "Continuation gate"]],
+    [/(review|audit|diff|output|report|审查|审核|检查|报告|输出|差异)/iu, ["Review reporter", "Constraint checker"]],
+    [/(test|verification|acceptance|verify|lint|build|测试|回归测试|验证|验收|校验|编译|构建)/iu, ["Test planner", "Verification runner plan"]],
+    [/(checklist|coverage|scope|逐项|对照|打勾|部分|范围|缩减)/iu, ["Checklist coverage tracker", "Scope coverage verifier"]],
+    [/(memory|preference|pattern|history|reuse|记忆|偏好|模式|历史|复用)/iu, ["Memory evolution", "Reusable pattern capture"]]
   ];
   for (const [pattern, values] of map) {
     if (pattern.test(text)) {
@@ -16216,7 +16779,7 @@ function affectedFiles(requirement, profile) {
     ...profile.api_dirs.slice(0, 8)
   ];
   const request = requirement.original_request.toLowerCase();
-  if (/(readme|docs|documentation)/iu.test(request)) {
+  if (/(readme|docs|documentation|文档|说明|主页|仓库主页)/iu.test(request)) {
     items.push("README.md", "docs/");
   }
   if (items.length === 0) {
@@ -16413,33 +16976,87 @@ function itemConfidence(pairType, source, candidate) {
 function semanticGroups(pairType) {
   const shared = [
     {
-      requirement: ["login", "auth", "authentication", "email", "verification-code", "password", "session"],
-      analysis: ["auth", "authentication", "form", "validation", "security", "session", "login"],
-      confidence: 0.84
-    },
-    {
-      requirement: ["page", "screen", "ui", "interface", "component", "layout"],
-      analysis: ["ui", "component", "route", "frontend", "view", "page"],
-      confidence: 0.8
-    },
-    {
-      requirement: ["style", "dark", "minimal", "theme", "visual", "clean"],
-      analysis: ["style", "theme", "design", "ui", "visual", "component"],
-      confidence: 0.82
-    },
-    {
-      requirement: ["test", "tests", "verify", "verification", "acceptance", "criteria"],
-      analysis: ["test", "tests", "verify", "verification", "lint", "build", "manual"],
+      requirement: ["cli", "command", "script", "helper", "terminal", "shell", "powershell"],
+      analysis: ["cli", "command", "entrypoint", "script", "helper", "terminal", "shell", "runner"],
       confidence: 0.86
     },
     {
-      requirement: ["memory", "preference", "pattern", "history", "reuse"],
-      analysis: ["memory", "pattern", "reuse", "preference", "assumption", "architecture"],
+      requirement: ["login", "auth", "authentication", "email", "verification-code", "password", "session", "\u767B\u5F55", "\u8BA4\u8BC1", "\u90AE\u7BB1", "\u9A8C\u8BC1\u7801", "\u5BC6\u7801", "\u4F1A\u8BDD", "\u6743\u9650"],
+      analysis: ["auth", "authentication", "form", "validation", "security", "session", "login", "\u8BA4\u8BC1", "\u8868\u5355", "\u6821\u9A8C", "\u5B89\u5168", "\u767B\u5F55"],
+      confidence: 0.84
+    },
+    {
+      requirement: ["page", "screen", "ui", "interface", "component", "layout", "\u9875\u9762", "\u754C\u9762", "\u7EC4\u4EF6", "\u5E03\u5C40", "\u524D\u7AEF", "\u89C6\u56FE"],
+      analysis: ["ui", "component", "route", "frontend", "view", "page", "\u7EC4\u4EF6", "\u8DEF\u7531", "\u524D\u7AEF", "\u89C6\u56FE", "\u9875\u9762"],
+      confidence: 0.8
+    },
+    {
+      requirement: ["style", "dark", "minimal", "theme", "visual", "clean", "\u98CE\u683C", "\u6DF1\u8272", "\u6781\u7B80", "\u4E3B\u9898", "\u89C6\u89C9", "\u6E05\u723D", "\u7B80\u6D01"],
+      analysis: ["style", "theme", "design", "ui", "visual", "component", "\u6837\u5F0F", "\u4E3B\u9898", "\u8BBE\u8BA1", "\u89C6\u89C9", "\u7EC4\u4EF6"],
+      confidence: 0.82
+    },
+    {
+      requirement: ["test", "tests", "verify", "verification", "acceptance", "criteria", "\u6D4B\u8BD5", "\u56DE\u5F52\u6D4B\u8BD5", "\u9A8C\u8BC1", "\u6821\u9A8C", "\u9A8C\u6536", "\u6807\u51C6", "\u8FD0\u884C", "\u901A\u8FC7"],
+      analysis: ["test", "tests", "verify", "verification", "lint", "build", "manual", "\u6D4B\u8BD5", "\u9A8C\u8BC1", "\u6821\u9A8C", "\u7F16\u8BD1", "\u6784\u5EFA", "\u624B\u52A8"],
+      confidence: 0.86
+    },
+    {
+      requirement: ["memory", "preference", "pattern", "history", "reuse", "\u8BB0\u5FC6", "\u504F\u597D", "\u6A21\u5F0F", "\u5386\u53F2", "\u590D\u7528", "\u4E60\u60EF"],
+      analysis: ["memory", "pattern", "reuse", "preference", "assumption", "architecture", "\u8BB0\u5FC6", "\u6A21\u5F0F", "\u590D\u7528", "\u504F\u597D", "\u5047\u8BBE", "\u67B6\u6784"],
       confidence: 0.76
     },
     {
-      requirement: ["unrelated", "scope", "scoped", "avoid", "forbid", "modify", "constraint"],
-      analysis: ["risk", "guard", "constraint", "scoped", "unrelated", "review"],
+      requirement: [
+        "unrelated",
+        "scope",
+        "sections",
+        "section",
+        "complete",
+        "check",
+        "check off",
+        "scoped",
+        "avoid",
+        "forbid",
+        "modify",
+        "constraint",
+        "\u4E0D\u8981",
+        "\u4E0D\u80FD",
+        "\u7981\u6B62",
+        "\u907F\u514D",
+        "\u53EA\u5141\u8BB8",
+        "\u53EA\u80FD",
+        "\u4E0D\u8981\u6539",
+        "\u4E0D\u8981\u4FEE\u6539",
+        "\u7EA6\u675F",
+        "\u8303\u56F4",
+        "\u65E0\u5173"
+      ],
+      analysis: ["risk", "guard", "constraint", "scoped", "unrelated", "review", "checklist", "coverage", "verifier", "\u98CE\u9669", "\u4FDD\u62A4", "\u7EA6\u675F", "\u8303\u56F4", "\u65E0\u5173", "\u5BA1\u67E5", "\u5B88\u62A4"],
+      confidence: 0.86
+    },
+    {
+      requirement: ["privacy", "secret", "internal", "disclose", "leak", "copy", "plagiarism", "\u516C\u5F00", "\u66B4\u9732", "\u6CC4\u9732", "\u4FDD\u5BC6", "\u6284\u88AD", "\u5185\u90E8", "\u8BE6\u7EC6\u80FD\u529B"],
+      analysis: ["risk", "guard", "security", "documentation", "review", "constraint", "\u98CE\u9669", "\u4FDD\u62A4", "\u5B89\u5168", "\u6587\u6863", "\u5BA1\u67E5", "\u7EA6\u675F"],
+      confidence: 0.84
+    },
+    {
+      requirement: ["readme", "docs", "documentation", "homepage", "guide", "\u6587\u6863", "\u8BF4\u660E", "\u4E3B\u9875", "\u4ED3\u5E93\u4E3B\u9875", "\u5B89\u88C5\u8BF4\u660E"],
+      analysis: ["documentation", "readme", "docs", "guide", "review", "\u6587\u6863", "\u8BF4\u660E", "\u6307\u5357", "\u5BA1\u67E5"],
+      confidence: 0.82
+    },
+    {
+      requirement: ["mcp", "tool", "tools", "server", "handler", "\u5DE5\u5177", "\u670D\u52A1\u5668", "\u5B8C\u6574\u903B\u8F91", "\u6CE8\u518C"],
+      analysis: ["mcp", "tool", "tools", "server", "handler", "registration", "\u5DE5\u5177", "\u670D\u52A1\u5668", "\u5904\u7406\u5668", "\u6CE8\u518C"],
+      confidence: 0.86
+    },
+    {
+      requirement: ["phase", "stage", "batch", "continue", "wait", "first", "second", "\u9636\u6BB5", "\u5206\u6279", "\u7EE7\u7EED", "\u7B49\u5F85", "\u7B2C\u4E00\u6279", "\u7B2C\u4E8C\u6279"],
+      analysis: ["phase", "phased", "workflow", "continuation", "gate", "batch", "\u9636\u6BB5", "\u5206\u6279", "\u7EE7\u7EED", "\u95E8\u63A7", "\u7B49\u5F85"],
+      confidence: 0.86
+    },
+    {
+      requirement: ["version", "cache", "plugin", "plugin.json", "manifest", "bump", "\u7248\u672C", "\u7F13\u5B58", "\u6E05\u5355"],
+      analysis: ["version", "cache", "plugin", "manifest", "updater", "cache-busting", "\u7248\u672C", "\u7F13\u5B58", "\u6E05\u5355"],
       confidence: 0.86
     }
   ];
@@ -16453,7 +17070,9 @@ function semanticGroups(pairType) {
     return shared.filter((group) => group.requirement.includes("test"));
   }
   if (pairType === "Constraint <-> Risk") {
-    return shared.filter((group) => group.requirement.includes("constraint"));
+    return shared.filter(
+      (group) => group.requirement.includes("constraint") || group.requirement.includes("privacy") || group.requirement.includes("disclose") || group.requirement.includes("\u516C\u5F00")
+    );
   }
   if (pairType === "Preference <-> Pattern") {
     return shared.filter((group) => group.requirement.includes("style") || group.requirement.includes("memory"));

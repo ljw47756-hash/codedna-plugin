@@ -4,15 +4,15 @@ export function normalizeText(value: unknown): string {
 
 export function splitSentences(value: string): string[] {
   return value
-    .split(/(?<=[.!?;])\s+|[;]\s*|\n+/u)
-    .map((part) => part.trim().replace(/^[,.\s]+|[,.\s]+$/g, ""))
+    .split(/(?<=[.!?])\s+|(?<=[。！？；])\s*|[;；]\s*|\n+/u)
+    .map((part) => part.trim().replace(/^[,，.。\s]+|[,，.。\s]+$/g, ""))
     .filter(Boolean);
 }
 
 export function splitClauses(value: string): string[] {
   const parts = value
-    .split(/[,]|(?:\s+and\s+)|(?:\s+with\s+)/iu)
-    .map((part) => part.trim().replace(/^[.\s]+|[.\s]+$/g, ""))
+    .split(/[,，、]|(?:\s+and\s+)|(?:\s+with\s+)|(?:同时|但是|不过|然后|另外|并且|以及)/iu)
+    .map((part) => part.trim().replace(/^[.。\s]+|[.。\s]+$/g, ""))
     .filter(Boolean);
   return parts.length > 0 ? parts : [value.trim()];
 }

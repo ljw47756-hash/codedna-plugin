@@ -91,13 +91,21 @@ function requiredModules(requirement: RequirementStrand, frameworks: string[]): 
   const text = [...requirement.features, ...requirement.preferences, requirement.core_goal].join(" ").toLowerCase();
   const modules = ["Requirement handling", "Implementation planning", "Verification", "Completion summary"];
   const map: Array<[RegExp, string[]]> = [
-    [/(ui|interface|page|screen|style|layout|visual)/iu, ["UI component", "Style layer"]],
-    [/(api|route|endpoint|controller|request)/iu, ["API route", "Request validation"]],
-    [/(login|auth|authentication|verification-code|password|session)/iu, ["Authentication flow", "Form validation", "Security review"]],
-    [/(scan|scanner|project|profile)/iu, ["Project scanner", "Project profile persistence"]],
-    [/(review|audit|diff|output|report)/iu, ["Review reporter", "Constraint checker"]],
-    [/(test|verification|acceptance|verify|lint|build)/iu, ["Test planner", "Verification runner plan"]],
-    [/(memory|preference|pattern|history|reuse)/iu, ["Memory evolution", "Reusable pattern capture"]]
+    [/(cli|command|script|helper|terminal|shell|powershell)/iu, ["CLI command entrypoint", "Helper script module"]],
+    [/(ui|interface|page|screen|style|layout|visual|页面|界面|组件|布局|样式|视觉)/iu, ["UI component", "Style layer"]],
+    [/(api|route|endpoint|controller|request|接口|路由|端点|请求|控制器)/iu, ["API route", "Request validation"]],
+    [
+      /(login|auth|authentication|verification-code|password|session|登录|验证码|校验码|密码|会话|权限|认证)/iu,
+      ["Authentication flow", "Form validation", "Security review"]
+    ],
+    [/(scan|scanner|project|profile|扫描|项目|画像|结构|分析项目)/iu, ["Project scanner", "Project profile persistence"]],
+    [/(mcp|tools?|server|工具|服务器|完整逻辑|注册)/iu, ["MCP tool handlers", "Server tool registration"]],
+    [/(version|cache|plugin\.json|manifest|bump|版本|缓存|清单)/iu, ["Plugin manifest updater", "Cache-busting version check"]],
+    [/(phase|stage|batch|continue|wait|first|second|阶段|分批|继续|等待|下一批|第一批|第二批)/iu, ["Phased workflow controller", "Continuation gate"]],
+    [/(review|audit|diff|output|report|审查|审核|检查|报告|输出|差异)/iu, ["Review reporter", "Constraint checker"]],
+    [/(test|verification|acceptance|verify|lint|build|测试|回归测试|验证|验收|校验|编译|构建)/iu, ["Test planner", "Verification runner plan"]],
+    [/(checklist|coverage|scope|逐项|对照|打勾|部分|范围|缩减)/iu, ["Checklist coverage tracker", "Scope coverage verifier"]],
+    [/(memory|preference|pattern|history|reuse|记忆|偏好|模式|历史|复用)/iu, ["Memory evolution", "Reusable pattern capture"]]
   ];
   for (const [pattern, values] of map) {
     if (pattern.test(text)) {
@@ -120,7 +128,7 @@ function affectedFiles(requirement: RequirementStrand, profile?: ProjectProfile)
     ...profile.api_dirs.slice(0, 8)
   ];
   const request = requirement.original_request.toLowerCase();
-  if (/(readme|docs|documentation)/iu.test(request)) {
+  if (/(readme|docs|documentation|文档|说明|主页|仓库主页)/iu.test(request)) {
     items.push("README.md", "docs/");
   }
   if (items.length === 0) {
