@@ -12,6 +12,8 @@
 # Dependencies and package-manager caches
 /node_modules/
 /mcp-server/node_modules/
+**/mcp-server/node_modules/
+**/mcp-server/data/
 /.npm/
 
 # Local configuration and secrets
