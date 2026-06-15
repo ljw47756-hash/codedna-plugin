@@ -22,6 +22,53 @@ Git 引用: main
 
 安装后建议重启 Codex App，或者至少新开一个对话，让插件能力重新加载。
 
+## 如果 MCP 没有自动启动
+
+有些版本的 Codex App 会先识别到 CodeDNA 的 Skills，但不会自动把插件里的 MCP server 提升为可用服务器。表现通常是：
+
+```text
+Settings -> MCP Servers 里只看到 node_repl
+codedna 只显示在“来自插件”区域
+聊天里无法稳定调用 CodeDNA MCP 工具
+```
+
+这种情况下不是插件代码坏了，而是需要把 CodeDNA MCP 注册到当前电脑的全局 MCP 配置里。仓库已经提供一键注册脚本。
+
+如果你已经 clone 了本仓库，在仓库根目录运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-codedna-mcp.ps1
+```
+
+如果你是通过 Codex App 的插件市场安装，没有单独 clone 仓库，可以在 PowerShell 里运行下面这段命令，它会从 Codex 插件缓存里找到已安装的 CodeDNA 包并注册 MCP：
+
+```powershell
+$plugin = Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache" -Recurse -Directory -Filter "codedna-plugin" |
+  Where-Object { Test-Path (Join-Path $_.FullName "scripts\install-codedna-mcp.ps1") } |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1
+
+if (-not $plugin) {
+  throw "CodeDNA plugin cache was not found. Reinstall CodeDNA from the plugin marketplace, or clone the GitHub repository and run the root script."
+}
+
+powershell -ExecutionPolicy Bypass -File (Join-Path $plugin.FullName "scripts\install-codedna-mcp.ps1")
+```
+
+执行完成后，重启 Codex App，再进入：
+
+```text
+Settings -> MCP Servers
+```
+
+正常情况下应该能在服务器列表里看到 `codedna`，并且开关已打开。此时 CodeDNA 的 Skills 和 MCP 都已经可用。
+
+如果只是想检查脚本会做什么，不实际修改配置，可以运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-codedna-mcp.ps1 -DryRun
+```
+
 ## 图片示例
 
 ![CodeDNA GitHub install example](assets/docs/codedna-install.svg)
@@ -52,6 +99,7 @@ Apps: 不显示
 - 本机没有安装 Node.js，或者 Node.js 版本太旧：安装 Node.js 20 或更新版本。
 - 安装到的是旧版本插件：删除旧安装后重新从 `main` 安装。
 - MCP 开关被关闭：进入 Settings -> MCP Servers，打开 `Codedna`。
+- 插件 MCP 没有自动提升为可用服务器：按上面的“一键注册脚本”注册全局 MCP。
 
 ## 什么时候适合使用 CodeDNA
 
@@ -100,6 +148,8 @@ Use CodeDNA full workflow before editing.
 ```text
 Use CodeDNA to review this output.
 ```
+
+不需要每一句都写完整流程。一般来说，复杂任务、跨文件任务、需要先规划再执行的任务，可以直接写 `Use CodeDNA`。如果你希望它一定走完整准备流程，就写 `Use CodeDNA full workflow before editing.`。
 
 ## 第一次测试
 
@@ -173,8 +223,29 @@ npm run build
 验证插件 manifest：
 
 ```powershell
-python "%USERPROFILE%\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py" "C:\path\to\codedna-plugin"
+Get-Content .\.codex-plugin\plugin.json | ConvertFrom-Json
+Get-Content .\.mcp.json | ConvertFrom-Json
+Test-Path .\mcp-server\dist\server.js
 ```
+
+如果 Codex CLI 提示 `Access is denied`，可以手动编辑：
+
+```text
+%USERPROFILE%\.codex\config.toml
+```
+
+加入下面配置，并把路径替换成你电脑上的真实路径：
+
+```toml
+[mcp_servers.codedna]
+command = "C:\\Program Files\\nodejs\\node.exe"
+args = ["C:\\path\\to\\codedna-plugin\\mcp-server\\dist\\server.js"]
+
+[mcp_servers.codedna.env]
+CODEDNA_DATA_DIR = "C:\\Users\\YourName\\.codex\\codedna-data"
+```
+
+保存后重启 Codex App。
 
 ## 注意
 
