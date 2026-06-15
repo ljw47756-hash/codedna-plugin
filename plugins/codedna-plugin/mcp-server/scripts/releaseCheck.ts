@@ -49,7 +49,7 @@ for (const skill of requiredSkillDirs) {
 
 const plugin = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
 const mcp = JSON.parse(await readFile(join(pluginRoot, ".mcp.json"), "utf8"));
-const codednaServer = mcp.codedna ?? mcp.mcp_servers?.codedna ?? mcp.mcpServers?.codedna;
+const codednaServer = mcp.mcpServers?.codedna;
 const marketplacePath = join(pluginRoot, ".agents", "plugins", "marketplace.json");
 const marketplace = (await exists(marketplacePath)) ? JSON.parse(await readFile(marketplacePath, "utf8")) : null;
 const serverSource = await readFile(join(pluginRoot, "mcp-server", "src", "server.ts"), "utf8");
@@ -93,11 +93,14 @@ if (plugin.skills !== "./skills/") {
 if (plugin.mcpServers !== "./.mcp.json") {
   missing.push("plugin.json mcpServers path must be ./.mcp.json");
 }
-if (mcp.mcpServers) {
-  missing.push(".mcp.json must use direct server map or mcp_servers, not mcpServers");
+if (!mcp.mcpServers || typeof mcp.mcpServers !== "object") {
+  missing.push(".mcp.json must use the mcpServers wrapper accepted by the current Codex plugin loader");
 }
 if (codednaServer?.args?.[0] !== "./mcp-server/dist/server.js") {
   missing.push(".mcp.json codedna server path must be ./mcp-server/dist/server.js");
+}
+if (codednaServer?.cwd !== ".") {
+  missing.push(".mcp.json codedna server cwd must be .");
 }
 if (codednaServer?.env?.CODEDNA_DATA_DIR === "./data") {
   missing.push(".mcp.json must not depend on CODEDNA_DATA_DIR=./data");

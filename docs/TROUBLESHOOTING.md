@@ -22,6 +22,79 @@ npm start
 
 If `node` is not found, install Node.js 20 or newer or use an absolute Node path in `.mcp.json`.
 
+## Fallback: Register CodeDNA As Local MCP
+
+Use this only when the plugin and Skills are installed, but CodeDNA still does not appear as an active MCP server. This command backs up `%USERPROFILE%\.codex\config.toml` and registers the installed CodeDNA cache as `codedna_local`.
+
+```powershell
+$ErrorActionPreference = "Stop"
+
+$config = "$env:USERPROFILE\.codex\config.toml"
+
+$server = Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache" -Recurse -File -Filter "server.js" -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.FullName -match "codedna|CodeDNA|codedna-local|codedna-plugin" -and
+        $_.FullName -match "mcp-server\\dist\\server.js"
+    } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+if (-not $server) {
+    throw "没有找到 CodeDNA 的 mcp-server\dist\server.js"
+}
+
+$node = (Get-Command node.exe -ErrorAction Stop).Source
+$serverPath = $server.FullName
+
+$distDir = Split-Path $serverPath -Parent
+$mcpServerDir = Split-Path $distDir -Parent
+$pluginRoot = Split-Path $mcpServerDir -Parent
+$dataDir = Join-Path $pluginRoot "data"
+
+New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
+function TomlPath($p) {
+    return "'" + $p.Replace("'", "''") + "'"
+}
+
+$nodeToml = TomlPath $node
+$serverToml = TomlPath $serverPath
+$rootToml = TomlPath $pluginRoot
+$dataToml = TomlPath $dataDir
+
+Copy-Item $config "$config.bak-codedna-$(Get-Date -Format yyyyMMdd-HHmmss)" -Force
+
+if (Select-String -Path $config -Pattern '^\[mcp_servers\.codedna_local\]' -Quiet) {
+    Write-Host "codedna_local 已经存在，未重复写入。" -ForegroundColor Yellow
+} else {
+    $block = @"
+
+[mcp_servers.codedna_local]
+command = $nodeToml
+args = [$serverToml]
+cwd = $rootToml
+startup_timeout_sec = 120
+tool_timeout_sec = 120
+enabled = true
+default_tools_approval_mode = "prompt"
+
+[mcp_servers.codedna_local.env]
+CODEDNA_DATA_DIR = $dataToml
+"@
+
+    Add-Content -Path $config -Value $block -Encoding UTF8
+    Write-Host "已写入 codedna_local MCP 配置。" -ForegroundColor Green
+}
+
+Write-Host ""
+Write-Host "Node:" $node
+Write-Host "Server:" $serverPath
+Write-Host "PluginRoot:" $pluginRoot
+Write-Host "Config:" $config
+```
+
+Restart Codex App after running it.
+
 ## Plugin Validator Fails On Hooks
 
 Current validation rejects unsupported manifest fields such as `hooks`. CodeDNA keeps hook guidance in `hooks/` but does not register hooks in `plugin.json`.
