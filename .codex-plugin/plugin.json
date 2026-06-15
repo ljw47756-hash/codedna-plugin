@@ -1,6 +1,6 @@
 {
   "name": "codedna-plugin",
-  "version": "0.1.0+codex.20260615020448",
+  "version": "0.1.1+codex.20260615023314",
   "description": "CodeDNA orchestrates Codex coding work with requirement capture, reverse analysis, Project Genome, guardrails, task packs, diff review, repair tasks, outcome scoring, and layered local memory.",
   "author": {
     "name": "CodeDNA",
