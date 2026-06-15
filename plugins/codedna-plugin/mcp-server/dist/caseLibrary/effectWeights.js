@@ -25,11 +25,11 @@ const familyToPairType = {
 };
 export function activateEffects(library, query, inferredFamilies, limit = 10) {
     const queryTokens = [...tokens(query)];
-    return library.effects
+    const scored = library.effects
         .map((effect) => ({ effect, score: scoreEffect(effect, query, queryTokens, inferredFamilies) }))
         .filter((item) => item.score > 0)
-        .sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id))
-        .slice(0, limit)
+        .sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id));
+    return selectDiverseEffects(scored, limit)
         .map(({ effect, score }) => ({
         id: effect.id,
         effect_family: effect.effect_family,
@@ -43,6 +43,44 @@ export function activateEffects(library, query, inferredFamilies, limit = 10) {
         codedna_pattern: effect.codedna_pattern,
         guardrail: effect.guardrail
     }));
+}
+function selectDiverseEffects(scored, limit) {
+    const maxPerFamily = Math.max(1, Math.min(2, Math.ceil(limit / 5)));
+    const grouped = new Map();
+    const seenPatterns = new Set();
+    for (const item of scored) {
+        const key = effectDedupeKey(item.effect);
+        if (seenPatterns.has(key)) {
+            continue;
+        }
+        seenPatterns.add(key);
+        const family = item.effect.effect_family;
+        const group = grouped.get(family) ?? [];
+        group.push(item);
+        grouped.set(family, group);
+    }
+    const groups = [...grouped.entries()]
+        .map(([family, items]) => ({ family, items }))
+        .sort((left, right) => (right.items[0]?.score ?? 0) - (left.items[0]?.score ?? 0) || left.family.localeCompare(right.family));
+    const selected = [];
+    const familyCounts = new Map();
+    let added = true;
+    while (selected.length < limit && added) {
+        added = false;
+        for (const group of groups) {
+            if (selected.length >= limit) {
+                break;
+            }
+            const count = familyCounts.get(group.family) ?? 0;
+            if (count >= maxPerFamily || group.items.length === 0) {
+                continue;
+            }
+            selected.push(group.items.shift());
+            familyCounts.set(group.family, count + 1);
+            added = true;
+        }
+    }
+    return selected;
 }
 export function ruleWeightAdjustments(activatedEffects) {
     return Object.entries(basePairWeights).map(([pairType, baseWeight]) => {
@@ -181,6 +219,9 @@ function fitWeight(fit) {
         return 1.1;
     }
     return 0.7;
+}
+function effectDedupeKey(effect) {
+    return `${effect.effect_family}|${effect.codedna_pattern}|${effect.guardrail}`.toLocaleLowerCase();
 }
 function roundWeight(value) {
     return Math.round(value * 100) / 100;

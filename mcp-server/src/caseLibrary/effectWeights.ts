@@ -30,11 +30,12 @@ const familyToPairType: Record<string, string> = {
 
 export function activateEffects(library: CaseLibrary, query: string, inferredFamilies: string[], limit = 10): ActivatedEffect[] {
   const queryTokens = [...tokens(query)];
-  return library.effects
+  const scored = library.effects
     .map((effect) => ({ effect, score: scoreEffect(effect, query, queryTokens, inferredFamilies) }))
     .filter((item) => item.score > 0)
-    .sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id))
-    .slice(0, limit)
+    .sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id));
+
+  return selectDiverseEffects(scored, limit)
     .map(({ effect, score }) => ({
       id: effect.id,
       effect_family: effect.effect_family,
@@ -48,6 +49,52 @@ export function activateEffects(library: CaseLibrary, query: string, inferredFam
       codedna_pattern: effect.codedna_pattern,
       guardrail: effect.guardrail
     }));
+}
+
+function selectDiverseEffects(
+  scored: Array<{ effect: RetainedEffect; score: number }>,
+  limit: number
+): Array<{ effect: RetainedEffect; score: number }> {
+  const maxPerFamily = Math.max(1, Math.min(2, Math.ceil(limit / 5)));
+  const grouped = new Map<string, Array<{ effect: RetainedEffect; score: number }>>();
+  const seenPatterns = new Set<string>();
+
+  for (const item of scored) {
+    const key = effectDedupeKey(item.effect);
+    if (seenPatterns.has(key)) {
+      continue;
+    }
+    seenPatterns.add(key);
+    const family = item.effect.effect_family;
+    const group = grouped.get(family) ?? [];
+    group.push(item);
+    grouped.set(family, group);
+  }
+
+  const groups = [...grouped.entries()]
+    .map(([family, items]) => ({ family, items }))
+    .sort((left, right) => (right.items[0]?.score ?? 0) - (left.items[0]?.score ?? 0) || left.family.localeCompare(right.family));
+  const selected: Array<{ effect: RetainedEffect; score: number }> = [];
+  const familyCounts = new Map<string, number>();
+
+  let added = true;
+  while (selected.length < limit && added) {
+    added = false;
+    for (const group of groups) {
+      if (selected.length >= limit) {
+        break;
+      }
+      const count = familyCounts.get(group.family) ?? 0;
+      if (count >= maxPerFamily || group.items.length === 0) {
+        continue;
+      }
+      selected.push(group.items.shift()!);
+      familyCounts.set(group.family, count + 1);
+      added = true;
+    }
+  }
+
+  return selected;
 }
 
 export function ruleWeightAdjustments(activatedEffects: ActivatedEffect[]): RuleWeightAdjustment[] {
@@ -201,6 +248,10 @@ function fitWeight(fit: string): number {
     return 1.1;
   }
   return 0.7;
+}
+
+function effectDedupeKey(effect: RetainedEffect): string {
+  return `${effect.effect_family}|${effect.codedna_pattern}|${effect.guardrail}`.toLocaleLowerCase();
 }
 
 function roundWeight(value: number): number {

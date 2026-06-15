@@ -142,7 +142,7 @@ export function recallCases(library: CaseLibrary, query: string, families: strin
 }
 
 function takeCases(scored: Array<{ entry: CodeDnaCase; score: number }>, limit: number): RecalledCase[] {
-  return scored.slice(0, limit).map(({ entry, score }) => ({
+  return selectDiverseCases(scored, limit).map(({ entry, score }) => ({
     id: entry.id,
     category: entry.category,
     outcome: entry.outcome ?? (isFailureCase(entry) ? "failure-pattern" : isSuccessCase(entry) ? "success-pattern" : "reference-pattern"),
@@ -153,6 +153,49 @@ function takeCases(scored: Array<{ entry: CodeDnaCase; score: number }>, limit: 
     guardrail: entry.guardrail,
     tags: entry.tags
   }));
+}
+
+function selectDiverseCases(scored: Array<{ entry: CodeDnaCase; score: number }>, limit: number): Array<{ entry: CodeDnaCase; score: number }> {
+  const grouped = new Map<string, Array<{ entry: CodeDnaCase; score: number }>>();
+  const seenPatterns = new Set<string>();
+  for (const item of scored) {
+    const key = caseDedupeKey(item.entry);
+    if (seenPatterns.has(key)) {
+      continue;
+    }
+    seenPatterns.add(key);
+    const family = item.entry.effect_family ?? item.entry.category;
+    const group = grouped.get(family) ?? [];
+    group.push(item);
+    grouped.set(family, group);
+  }
+
+  const groups = [...grouped.entries()]
+    .map(([family, items]) => ({ family, items }))
+    .sort((left, right) => (right.items[0]?.score ?? 0) - (left.items[0]?.score ?? 0) || left.family.localeCompare(right.family));
+  const selected: Array<{ entry: CodeDnaCase; score: number }> = [];
+  const familyCounts = new Map<string, number>();
+
+  for (const passLimit of [1, 2]) {
+    let added = true;
+    while (selected.length < limit && added) {
+      added = false;
+      for (const group of groups) {
+        if (selected.length >= limit) {
+          break;
+        }
+        const count = familyCounts.get(group.family) ?? 0;
+        if (count >= passLimit || group.items.length === 0) {
+          continue;
+        }
+        selected.push(group.items.shift()!);
+        familyCounts.set(group.family, count + 1);
+        added = true;
+      }
+    }
+  }
+
+  return selected;
 }
 
 function fallbackCases(library: CaseLibrary, families: string[], outcome: "success" | "failure", limit: number): RecalledCase[] {
@@ -175,10 +218,21 @@ function scoreEntry(entry: CodeDnaCase, query: string, queryTokens: string[], fa
   if (entry.effect_family && families.includes(entry.effect_family)) {
     score += 3;
   }
+  if (entry.effect_family && families[0] === entry.effect_family) {
+    score += 0.9;
+  }
   for (const family of families) {
     if (entryText.includes(family)) {
       score += 0.75;
     }
+  }
+  if (entry.tags.includes("strong")) {
+    score += 0.8;
+  } else if (entry.tags.includes("medium")) {
+    score += 0.25;
+  }
+  if (/guardrail|constraint|scope|risk|不要|禁止|范围|约束/i.test(query) && /guardrail|scope|risk|constraint|Do not/i.test(entry.guardrail)) {
+    score += 0.6;
   }
   if (/不要|禁止|避免|do not|avoid|forbid|risk|guardrail/i.test(query) && isFailureCase(entry)) {
     score += 0.8;
@@ -187,6 +241,10 @@ function scoreEntry(entry: CodeDnaCase, query: string, queryTokens: string[], fa
     score += 0.5;
   }
   return score;
+}
+
+function caseDedupeKey(entry: CodeDnaCase): string {
+  return `${entry.effect_family ?? entry.category}|${entry.codedna_pattern}|${entry.guardrail}`.toLocaleLowerCase();
 }
 
 function isSuccessCase(entry: CodeDnaCase): boolean {

@@ -16936,7 +16936,7 @@ function recallCases(library, query, families, limit = CASE_LIMIT) {
   };
 }
 function takeCases(scored, limit) {
-  return scored.slice(0, limit).map(({ entry, score: score2 }) => ({
+  return selectDiverseCases(scored, limit).map(({ entry, score: score2 }) => ({
     id: entry.id,
     category: entry.category,
     outcome: entry.outcome ?? (isFailureCase(entry) ? "failure-pattern" : isSuccessCase(entry) ? "success-pattern" : "reference-pattern"),
@@ -16947,6 +16947,43 @@ function takeCases(scored, limit) {
     guardrail: entry.guardrail,
     tags: entry.tags
   }));
+}
+function selectDiverseCases(scored, limit) {
+  const grouped = /* @__PURE__ */ new Map();
+  const seenPatterns = /* @__PURE__ */ new Set();
+  for (const item of scored) {
+    const key = caseDedupeKey(item.entry);
+    if (seenPatterns.has(key)) {
+      continue;
+    }
+    seenPatterns.add(key);
+    const family = item.entry.effect_family ?? item.entry.category;
+    const group = grouped.get(family) ?? [];
+    group.push(item);
+    grouped.set(family, group);
+  }
+  const groups = [...grouped.entries()].map(([family, items]) => ({ family, items })).sort((left, right) => (right.items[0]?.score ?? 0) - (left.items[0]?.score ?? 0) || left.family.localeCompare(right.family));
+  const selected = [];
+  const familyCounts = /* @__PURE__ */ new Map();
+  for (const passLimit of [1, 2]) {
+    let added = true;
+    while (selected.length < limit && added) {
+      added = false;
+      for (const group of groups) {
+        if (selected.length >= limit) {
+          break;
+        }
+        const count = familyCounts.get(group.family) ?? 0;
+        if (count >= passLimit || group.items.length === 0) {
+          continue;
+        }
+        selected.push(group.items.shift());
+        familyCounts.set(group.family, count + 1);
+        added = true;
+      }
+    }
+  }
+  return selected;
 }
 function fallbackCases(library, families, outcome, limit) {
   const predicate = outcome === "success" ? isSuccessCase : isFailureCase;
@@ -16964,10 +17001,21 @@ function scoreEntry(entry, query, queryTokens, families) {
   if (entry.effect_family && families.includes(entry.effect_family)) {
     score2 += 3;
   }
+  if (entry.effect_family && families[0] === entry.effect_family) {
+    score2 += 0.9;
+  }
   for (const family of families) {
     if (entryText.includes(family)) {
       score2 += 0.75;
     }
+  }
+  if (entry.tags.includes("strong")) {
+    score2 += 0.8;
+  } else if (entry.tags.includes("medium")) {
+    score2 += 0.25;
+  }
+  if (/guardrail|constraint|scope|risk|不要|禁止|范围|约束/i.test(query) && /guardrail|scope|risk|constraint|Do not/i.test(entry.guardrail)) {
+    score2 += 0.6;
   }
   if (/不要|禁止|避免|do not|avoid|forbid|risk|guardrail/i.test(query) && isFailureCase(entry)) {
     score2 += 0.8;
@@ -16976,6 +17024,9 @@ function scoreEntry(entry, query, queryTokens, families) {
     score2 += 0.5;
   }
   return score2;
+}
+function caseDedupeKey(entry) {
+  return `${entry.effect_family ?? entry.category}|${entry.codedna_pattern}|${entry.guardrail}`.toLocaleLowerCase();
 }
 function isSuccessCase(entry) {
   return entry.category.includes("success") || entry.outcome === "success-pattern";
@@ -17072,7 +17123,8 @@ var familyToPairType = {
 };
 function activateEffects(library, query, inferredFamilies, limit = 10) {
   const queryTokens = [...tokens(query)];
-  return library.effects.map((effect) => ({ effect, score: scoreEffect(effect, query, queryTokens, inferredFamilies) })).filter((item) => item.score > 0).sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id)).slice(0, limit).map(({ effect, score: score2 }) => ({
+  const scored = library.effects.map((effect) => ({ effect, score: scoreEffect(effect, query, queryTokens, inferredFamilies) })).filter((item) => item.score > 0).sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id));
+  return selectDiverseEffects(scored, limit).map(({ effect, score: score2 }) => ({
     id: effect.id,
     effect_family: effect.effect_family,
     fit: effect.fit,
@@ -17085,6 +17137,42 @@ function activateEffects(library, query, inferredFamilies, limit = 10) {
     codedna_pattern: effect.codedna_pattern,
     guardrail: effect.guardrail
   }));
+}
+function selectDiverseEffects(scored, limit) {
+  const maxPerFamily = Math.max(1, Math.min(2, Math.ceil(limit / 5)));
+  const grouped = /* @__PURE__ */ new Map();
+  const seenPatterns = /* @__PURE__ */ new Set();
+  for (const item of scored) {
+    const key = effectDedupeKey(item.effect);
+    if (seenPatterns.has(key)) {
+      continue;
+    }
+    seenPatterns.add(key);
+    const family = item.effect.effect_family;
+    const group = grouped.get(family) ?? [];
+    group.push(item);
+    grouped.set(family, group);
+  }
+  const groups = [...grouped.entries()].map(([family, items]) => ({ family, items })).sort((left, right) => (right.items[0]?.score ?? 0) - (left.items[0]?.score ?? 0) || left.family.localeCompare(right.family));
+  const selected = [];
+  const familyCounts = /* @__PURE__ */ new Map();
+  let added = true;
+  while (selected.length < limit && added) {
+    added = false;
+    for (const group of groups) {
+      if (selected.length >= limit) {
+        break;
+      }
+      const count = familyCounts.get(group.family) ?? 0;
+      if (count >= maxPerFamily || group.items.length === 0) {
+        continue;
+      }
+      selected.push(group.items.shift());
+      familyCounts.set(group.family, count + 1);
+      added = true;
+    }
+  }
+  return selected;
 }
 function ruleWeightAdjustments(activatedEffects) {
   return Object.entries(basePairWeights).map(([pairType, baseWeight]) => {
@@ -17223,6 +17311,9 @@ function fitWeight(fit) {
     return 1.1;
   }
   return 0.7;
+}
+function effectDedupeKey(effect) {
+  return `${effect.effect_family}|${effect.codedna_pattern}|${effect.guardrail}`.toLocaleLowerCase();
 }
 function roundWeight(value) {
   return Math.round(value * 100) / 100;

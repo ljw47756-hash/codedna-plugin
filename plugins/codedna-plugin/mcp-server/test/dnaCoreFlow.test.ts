@@ -42,6 +42,10 @@ test("CodeDNA core flow keeps the double-strand model connected to effects and c
     assert.ok((paired.pairing_result.activated_effects ?? []).length > 0);
     assert.ok((paired.pairing_result.case_recall?.success_patterns ?? []).length > 0);
     assert.ok((paired.pairing_result.case_recall?.failure_patterns ?? []).length > 0);
+    assert.ok(maxRun((paired.pairing_result.activated_effects ?? []).map((item) => item.effect_family)) <= 2);
+    assert.ok(uniqueCount((paired.pairing_result.activated_effects ?? []).map((item) => item.effect_family)) >= 3);
+    assert.ok(uniqueCount((paired.pairing_result.case_recall?.success_patterns ?? []).map((item) => item.effect_family ?? item.category)) >= 3);
+    assert.ok(uniqueCount((paired.pairing_result.case_recall?.failure_patterns ?? []).map((item) => item.effect_family ?? item.category)) >= 3);
     assert.ok((paired.pairing_result.score_explanation ?? []).some((item) => /effect|case/i.test(item)));
     assert.ok(paired.pairing_result.pairing_score >= 70);
 
@@ -88,3 +92,19 @@ test("CodeDNA core flow keeps the double-strand model connected to effects and c
     assert.match(reviewMarkdown, /Memory Evolution Proposal/u);
   });
 });
+
+function maxRun(items: string[]): number {
+  let current = 0;
+  let max = 0;
+  let previous = "";
+  for (const item of items) {
+    current = item === previous ? current + 1 : 1;
+    previous = item;
+    max = Math.max(max, current);
+  }
+  return max;
+}
+
+function uniqueCount(items: string[]): number {
+  return new Set(items.filter(Boolean)).size;
+}
