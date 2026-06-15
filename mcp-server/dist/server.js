@@ -3229,8 +3229,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path) {
-      let input = path;
+    function removeDotSegments(path2) {
+      let input = path2;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3482,8 +3482,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path && path !== "/" ? path : void 0;
+        const [path2, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path2 && path2 !== "/" ? path2 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6891,7 +6891,7 @@ var require_dist = __commonJS({
 
 // src/server.ts
 import { dirname as dirname3, join as join4, resolve as resolve4 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // node_modules/zod/v4/core/core.js
 var _a;
@@ -7133,10 +7133,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path) {
-  if (!path)
+function getElementAtPath(obj, path2) {
+  if (!path2)
     return obj;
-  return path.reduce((acc, key) => acc?.[key], obj);
+  return path2.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7545,11 +7545,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path, issues) {
+function prefixIssues(path2, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path);
+    iss.path.unshift(path2);
     return iss;
   });
 }
@@ -7696,16 +7696,16 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
 }
 function formatError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error3, path = []) => {
+  const processError = (error3, path2 = []) => {
     for (const issue2 of error3.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
       } else {
-        const fullpath = [...path, ...issue2.path];
+        const fullpath = [...path2, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -16850,8 +16850,203 @@ function assumptions(requirement, profile) {
   ]);
 }
 
-// src/tools/pairStrands.ts
-var pairWeights = {
+// src/caseLibrary/caseLibrary.ts
+import { readdir as readdir2, readFile as readFile2, stat as stat2 } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+var CASE_LIMIT = 4;
+var cachedLibrary;
+async function loadCaseLibrary() {
+  cachedLibrary ??= readLibrary();
+  return cachedLibrary;
+}
+function inferEffectFamilies(text) {
+  const normalized = text.toLocaleLowerCase();
+  const familySignals = [
+    {
+      family: "planning-and-mode-boundaries",
+      hints: ["plan-only", "review-only", "implementation", "phase", "continue", "wait", "\u5148\u505A", "\u7EE7\u7EED", "\u7B49\u6211\u8BF4", "\u4E0D\u8981\u7EE7\u7EED", "\u6700\u7EC8\u68C0\u67E5", "\u6587\u6863\u6536\u53E3"]
+    },
+    {
+      family: "guardrails-and-risk-control",
+      hints: ["guardrail", "risk", "constraint", "scope", "do not", "avoid", "forbid", "\u4E0D\u8981", "\u7981\u6B62", "\u53EA\u80FD", "\u8303\u56F4", "\u7EA6\u675F", "\u516C\u5F00", "\u6284\u88AD", "\u6CC4\u9732"]
+    },
+    {
+      family: "documentation-and-operational-clarity",
+      hints: ["readme", "docs", "documentation", "homepage", "install", "guide", "\u6587\u6863", "\u8BF4\u660E", "\u5B89\u88C5", "\u4E3B\u9875", "\u8C03\u7528\u89C4\u5219"]
+    },
+    {
+      family: "plugin-installation-diagnostics",
+      hints: ["plugin", "marketplace", "mcp", "install", "cache", "\u63D2\u4EF6", "\u5E02\u573A", "\u5B89\u88C5", "\u542F\u52A8", "\u7F13\u5B58"]
+    },
+    {
+      family: "mcp-diagnostics",
+      hints: ["mcp", "server", "tool", "stdio", "\u5DE5\u5177", "\u670D\u52A1\u5668", "\u542F\u52A8\u5931\u8D25", "\u6CA1\u6709\u542F\u52A8"]
+    },
+    {
+      family: "task-decomposition-not-runtime-agents",
+      hints: ["module", "step", "task pack", "decompose", "\u6A21\u5757", "\u6B65\u9AA4", "\u4EFB\u52A1\u5305", "\u62C6\u5206", "\u53CC\u94FE"]
+    },
+    {
+      family: "review-diff-and-repair",
+      hints: ["review", "diff", "repair", "fix", "\u5BA1\u67E5", "\u53CD\u5411\u5BA1\u67E5", "\u4FEE\u590D", "\u8865\u6D4B\u8BD5", "\u5931\u8D25\u540E"]
+    },
+    {
+      family: "memory-and-session-continuity",
+      hints: ["memory", "remember", "evolution", "history", "\u8BB0\u5FC6", "\u6C89\u6DC0", "\u8FDB\u5316", "\u5386\u53F2", "\u504F\u597D"]
+    },
+    {
+      family: "project-context-and-diagnostics",
+      hints: ["project", "scan", "genome", "context", "\u9879\u76EE", "\u626B\u63CF", "\u4E0A\u4E0B\u6587", "\u57FA\u56E0\u7EC4"]
+    },
+    {
+      family: "configuration-and-health-reports",
+      hints: ["config", "health", "validate", "release", "\u914D\u7F6E", "\u5065\u5EB7", "\u6821\u9A8C", "\u9A8C\u6536", "\u53D1\u5E03"]
+    },
+    {
+      family: "skill-routing-and-health",
+      hints: ["skill", "skills", "routing", "\u6280\u80FD", "\u8DEF\u7531", "\u89E6\u53D1"]
+    },
+    {
+      family: "clear-user-feedback",
+      hints: ["feedback", "explain", "summary", "\u7528\u6237\u53CD\u9988", "\u603B\u7ED3", "\u8BF4\u660E", "\u522B\u7F29\u51CF", "\u4E0D\u8981\u5077\u61D2"]
+    },
+    {
+      family: "task-lifecycle-and-case-records",
+      hints: ["case", "record", "success", "failure", "\u6848\u4F8B", "\u6210\u529F", "\u5931\u8D25", "\u8BB0\u5F55"]
+    },
+    {
+      family: "git-and-pr-awareness",
+      hints: ["git", "github", "pr", "commit", "push", "\u4ED3\u5E93", "\u63D0\u4EA4", "\u4E0A\u4F20"]
+    }
+  ];
+  return familySignals.filter((signal) => signal.hints.some((hint) => normalized.includes(hint.toLocaleLowerCase()) || text.includes(hint))).map((signal) => signal.family);
+}
+function recallCases(library, query, families, limit = CASE_LIMIT) {
+  const queryTokens = [...tokens(query)];
+  const scored = library.cases.map((entry) => ({ entry, score: scoreEntry(entry, query, queryTokens, families) })).filter((item) => item.score > 0).sort((left, right) => right.score - left.score || left.entry.id.localeCompare(right.entry.id));
+  const successPatterns = takeCases(scored.filter((item) => isSuccessCase(item.entry)), limit);
+  const failurePatterns = takeCases(scored.filter((item) => isFailureCase(item.entry)), limit);
+  const publicPatterns = takeCases(scored.filter((item) => !String(item.entry.category).startsWith("retained-")), limit);
+  return {
+    query_terms: uniqueStrings([...families, ...queryTokens.slice(0, 14)]),
+    success_patterns: successPatterns.length ? successPatterns : fallbackCases(library, families, "success", limit),
+    failure_patterns: failurePatterns.length ? failurePatterns : fallbackCases(library, families, "failure", limit),
+    public_patterns: publicPatterns
+  };
+}
+function takeCases(scored, limit) {
+  return scored.slice(0, limit).map(({ entry, score: score2 }) => ({
+    id: entry.id,
+    category: entry.category,
+    outcome: entry.outcome ?? (isFailureCase(entry) ? "failure-pattern" : isSuccessCase(entry) ? "success-pattern" : "reference-pattern"),
+    effect_family: entry.effect_family,
+    score: roundScore(score2),
+    summary: entry.summary,
+    codedna_pattern: entry.codedna_pattern,
+    guardrail: entry.guardrail,
+    tags: entry.tags
+  }));
+}
+function fallbackCases(library, families, outcome, limit) {
+  const predicate = outcome === "success" ? isSuccessCase : isFailureCase;
+  const entries = library.cases.filter(predicate).filter((entry) => !families.length || families.includes(entry.effect_family ?? "")).slice(0, limit);
+  return takeCases(entries.map((entry) => ({ entry, score: 0.2 })), limit);
+}
+function scoreEntry(entry, query, queryTokens, families) {
+  let score2 = 0;
+  const entryText = `${entry.effect_family ?? ""} ${entry.summary} ${entry.codedna_pattern} ${entry.guardrail} ${entry.tags.join(" ")}`.toLocaleLowerCase();
+  for (const token of queryTokens) {
+    if (entryText.includes(token.toLocaleLowerCase())) {
+      score2 += token.length > 2 ? 0.35 : 0.15;
+    }
+  }
+  if (entry.effect_family && families.includes(entry.effect_family)) {
+    score2 += 3;
+  }
+  for (const family of families) {
+    if (entryText.includes(family)) {
+      score2 += 0.75;
+    }
+  }
+  if (/不要|禁止|避免|do not|avoid|forbid|risk|guardrail/i.test(query) && isFailureCase(entry)) {
+    score2 += 0.8;
+  }
+  if (/成功|ready|pass|accepted|stable/i.test(query) && isSuccessCase(entry)) {
+    score2 += 0.5;
+  }
+  return score2;
+}
+function isSuccessCase(entry) {
+  return entry.category.includes("success") || entry.outcome === "success-pattern";
+}
+function isFailureCase(entry) {
+  return entry.category.includes("failure") || entry.outcome === "failure-pattern";
+}
+async function readLibrary() {
+  const root = await findCaseLibraryRoot();
+  const warnings3 = [];
+  if (!root) {
+    return { root: "", effects: [], cases: [], warnings: ["CodeDNA case-library directory was not found."] };
+  }
+  const effects2 = await readJsonlFile(path.join(root, "effects", "codedna-retained-effects.jsonl"), warnings3);
+  const cases = [];
+  try {
+    const caseDir = path.join(root, "cases");
+    const files = (await readdir2(caseDir)).filter((name) => name.endsWith(".jsonl")).sort();
+    for (const file of files) {
+      cases.push(...await readJsonlFile(path.join(caseDir, file), warnings3));
+    }
+  } catch (error2) {
+    warnings3.push(`Failed to read case-library cases: ${error2 instanceof Error ? error2.message : String(error2)}`);
+  }
+  return { root, effects: effects2, cases, warnings: warnings3 };
+}
+async function readJsonlFile(file, warnings3) {
+  try {
+    const content = await readFile2(file, "utf8");
+    const values = [];
+    for (const [index, line] of content.split(/\r?\n/u).entries()) {
+      if (!line.trim()) {
+        continue;
+      }
+      try {
+        values.push(JSON.parse(line));
+      } catch (error2) {
+        warnings3.push(`Failed to parse ${path.basename(file)} line ${index + 1}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+      }
+    }
+    return values;
+  } catch (error2) {
+    warnings3.push(`Failed to read ${file}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    return [];
+  }
+}
+async function findCaseLibraryRoot() {
+  const currentDir2 = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = uniqueStrings([
+    path.resolve(currentDir2, "../..", "case-library"),
+    path.resolve(currentDir2, "../../..", "case-library"),
+    path.resolve(process.cwd(), "case-library"),
+    path.resolve(process.cwd(), "..", "case-library")
+  ]);
+  for (const candidate of candidates) {
+    try {
+      const value = await stat2(candidate);
+      if (value.isDirectory()) {
+        return candidate;
+      }
+    } catch {
+    }
+  }
+  return void 0;
+}
+function roundScore(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// src/caseLibrary/effectWeights.ts
+var basePairWeights = {
   "Goal <-> Task": 20,
   "Constraint <-> Risk": 18,
   "Preference <-> Pattern": 14,
@@ -16859,6 +17054,182 @@ var pairWeights = {
   "Acceptance <-> Test": 18,
   "Memory <-> Reuse": 10
 };
+var familyToPairType = {
+  "planning-and-mode-boundaries": "Goal <-> Task",
+  "guardrails-and-risk-control": "Constraint <-> Risk",
+  "documentation-and-operational-clarity": "Acceptance <-> Test",
+  "plugin-installation-diagnostics": "Constraint <-> Risk",
+  "mcp-diagnostics": "Feature <-> Module",
+  "task-decomposition-not-runtime-agents": "Feature <-> Module",
+  "review-diff-and-repair": "Acceptance <-> Test",
+  "memory-and-session-continuity": "Memory <-> Reuse",
+  "project-context-and-diagnostics": "Feature <-> Module",
+  "configuration-and-health-reports": "Constraint <-> Risk",
+  "skill-routing-and-health": "Preference <-> Pattern",
+  "clear-user-feedback": "Preference <-> Pattern",
+  "task-lifecycle-and-case-records": "Memory <-> Reuse",
+  "git-and-pr-awareness": "Constraint <-> Risk"
+};
+function activateEffects(library, query, inferredFamilies, limit = 10) {
+  const queryTokens = [...tokens(query)];
+  return library.effects.map((effect) => ({ effect, score: scoreEffect(effect, query, queryTokens, inferredFamilies) })).filter((item) => item.score > 0).sort((left, right) => right.score - left.score || left.effect.id.localeCompare(right.effect.id)).slice(0, limit).map(({ effect, score: score2 }) => ({
+    id: effect.id,
+    effect_family: effect.effect_family,
+    fit: effect.fit,
+    activation_surface: effect.activation_surface,
+    codedna_target: effect.codedna_target,
+    pair_type: pairTypeForFamily(effect.effect_family),
+    weight: roundWeight(score2 + fitWeight(effect.fit)),
+    matched_terms: matchedTerms(effect, queryTokens, inferredFamilies),
+    summary: effect.summary,
+    codedna_pattern: effect.codedna_pattern,
+    guardrail: effect.guardrail
+  }));
+}
+function ruleWeightAdjustments(activatedEffects) {
+  return Object.entries(basePairWeights).map(([pairType, baseWeight]) => {
+    const related = activatedEffects.filter((effect) => effect.pair_type === pairType);
+    const boost = Math.min(6, related.reduce((sum, effect) => sum + effect.weight, 0) / 2.5);
+    return {
+      pair_type: pairType,
+      base_weight: baseWeight,
+      adjusted_weight: Math.round((baseWeight + boost) * 100) / 100,
+      activated_effect_ids: related.map((effect) => effect.id)
+    };
+  });
+}
+function scoreAdjustmentFromEffects(activatedEffects, missingCount, unmatchedCount) {
+  if (activatedEffects.length === 0) {
+    return 0;
+  }
+  const positive = Math.min(7, activatedEffects.reduce((sum, effect) => sum + effect.weight, 0) / 4);
+  const uncertaintyPenalty = Math.min(4, missingCount * 1.25 + unmatchedCount * 0.5);
+  return Math.round((positive - uncertaintyPenalty) * 100) / 100;
+}
+function dnaAlignment(score2) {
+  return {
+    requirement_strand: "User Requirement Strand",
+    pairing_review: "Bidirectional Pairing Review",
+    analysis_strand: "Reverse Analysis Strand",
+    execution_layer: "Codex Task Pack",
+    feedback_layer: "Reverse Review",
+    evolution_layer: "Memory Evolution",
+    flow: [
+      "\u7528\u6237\u9700\u6C42\u94FE",
+      "\u914D\u5BF9\u5BA1\u67E5",
+      "\u53CD\u5411\u89E3\u6790\u94FE",
+      "Codex \u4EFB\u52A1\u5305",
+      "\u4EE3\u7801\u6267\u884C",
+      "\u53CD\u5411\u5BA1\u67E5",
+      "\u8BB0\u5FC6\u8FDB\u5316"
+    ],
+    gate_status: score2 >= 90 ? "ready" : score2 >= 70 ? "cautious" : "blocked"
+  };
+}
+function codexAssistanceSteps(score2) {
+  const gate = score2 >= 70 ? "Use after this CodeDNA stage completes." : "Use after the user answers missing information.";
+  return [
+    {
+      stage: "Requirement Strand",
+      codex_role: "Clarify intent and preserve the original request verbatim.",
+      prompt: "Use the Requirement Strand to restate the goal, constraints, preferences, acceptance criteria, and unknowns before editing.",
+      expected_output: "A concise confirmation of what will and will not be done.",
+      use_when: "Before reverse analysis or when the request contains correction, phased, or privacy-sensitive language."
+    },
+    {
+      stage: "Pairing Review",
+      codex_role: "Judge whether Requirement and Analysis are aligned enough for execution.",
+      prompt: "Use pairing_score, unmatched_pairs, missing_information, activated_effects, and case_recall to decide full, cautious, or blocked execution.",
+      expected_output: "A go, cautious-go, or clarification decision with reasons.",
+      use_when: gate
+    },
+    {
+      stage: "Codex Task Pack",
+      codex_role: "Turn the paired DNA strands into a concrete implementation brief.",
+      prompt: "Follow the task pack exactly: scope, files, steps, risks, tests, and final response format.",
+      expected_output: "A scoped implementation plan or edit set with verification evidence.",
+      use_when: "When pairing_score is 70 or higher."
+    },
+    {
+      stage: "Reverse Review",
+      codex_role: "Inspect the result against the original request and guardrails.",
+      prompt: "Compare the diff or output against Requirement Strand, forbidden scope, risks, tests, and relevant failure patterns.",
+      expected_output: "A pass, warning, needs-fix, or blocked verdict plus a repair prompt if needed.",
+      use_when: "After Codex produces code, a diff, logs, or a summary."
+    },
+    {
+      stage: "Memory Evolution",
+      codex_role: "Propose learning without silently writing long-term memory.",
+      prompt: "Only propose memory updates from confirmed preferences, repeated successful patterns, or rejected patterns; wait for user confirmation.",
+      expected_output: "A memory proposal or no-memory-needed decision.",
+      use_when: "After review or when the user explicitly expresses a preference."
+    }
+  ];
+}
+function scoreExplanation(baseScore, finalScore, activatedEffects, caseCounts, adjustment) {
+  return [
+    `Base double-strand pairing score: ${baseScore}.`,
+    `Activated ${activatedEffects.length} CodeDNA effect rule(s) as auxiliary weights; score adjustment: ${adjustment >= 0 ? "+" : ""}${adjustment}.`,
+    `Recalled ${caseCounts.success} success pattern(s), ${caseCounts.failure} failure pattern(s), and ${caseCounts.public} public reference pattern(s).`,
+    `Final score after bounded DNA evidence adjustment: ${finalScore}.`
+  ];
+}
+function scoreEffect(effect, query, queryTokens, families) {
+  let score2 = 0;
+  const effectText = [
+    effect.effect_family,
+    effect.activation_surface,
+    effect.codedna_target,
+    effect.summary,
+    effect.adapted_behavior,
+    effect.codedna_pattern,
+    effect.guardrail,
+    effect.tags.join(" ")
+  ].join(" ").toLocaleLowerCase();
+  for (const token of queryTokens) {
+    if (effectText.includes(token.toLocaleLowerCase())) {
+      score2 += token.length > 2 ? 0.35 : 0.12;
+    }
+  }
+  if (families.includes(effect.effect_family)) {
+    score2 += 4;
+  }
+  if (/不要|禁止|避免|do not|avoid|forbid|risk|guardrail/i.test(query) && effect.effect_family.includes("guardrails")) {
+    score2 += 1;
+  }
+  if (/继续|阶段|phase|wait/i.test(query) && effect.effect_family.includes("planning")) {
+    score2 += 1;
+  }
+  if (/记忆|memory|evolution/i.test(query) && effect.effect_family.includes("memory")) {
+    score2 += 1;
+  }
+  return score2;
+}
+function matchedTerms(effect, queryTokens, families) {
+  const effectText = `${effect.effect_family} ${effect.tags.join(" ")} ${effect.codedna_pattern}`.toLocaleLowerCase();
+  return uniqueStrings([
+    ...families.filter((family) => family === effect.effect_family),
+    ...queryTokens.filter((token) => effectText.includes(token.toLocaleLowerCase())).slice(0, 8)
+  ]);
+}
+function pairTypeForFamily(family) {
+  return familyToPairType[family] ?? "Goal <-> Task";
+}
+function fitWeight(fit) {
+  if (fit === "strong") {
+    return 1.8;
+  }
+  if (fit === "medium") {
+    return 1.1;
+  }
+  return 0.7;
+}
+function roundWeight(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// src/tools/pairStrands.ts
+var pairWeights = basePairWeights;
 async function pairStrands(input, memoryStore2) {
   const requirement = input.requirement_strand;
   const analysis = input.analysis_strand;
@@ -16873,15 +17244,38 @@ async function pairStrands(input, memoryStore2) {
   addCollectionPairs("Feature <-> Module", requirement.features, analysis.required_modules, matched, unmatched);
   addCollectionPairs("Acceptance <-> Test", requirement.acceptance_criteria, analysis.test_plan, matched, unmatched);
   addCollectionPairs("Memory <-> Reuse", requirement.user_memory_related_rules, [...analysis.suggested_architecture, ...analysis.assumptions], matched, unmatched);
-  const pairingScore = score(matched, unmatched, requirement.unknowns);
+  const baseScore = score(matched, unmatched, requirement.unknowns);
+  const query = dnaQuery(requirement, analysis);
+  const library = await loadCaseLibrary();
+  const inferredFamilies = inferEffectFamilies(query);
+  const activatedEffects = activateEffects(library, query, inferredFamilies);
+  const caseRecall = recallCases(library, query, inferredFamilies);
+  const evidenceAdjustment = scoreAdjustmentFromEffects(activatedEffects, requirement.unknowns.length, unmatched.length);
+  const pairingScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
   const result2 = {
     pairing_score: pairingScore,
     matched_pairs: matched,
     unmatched_pairs: unmatched,
-    warnings: warnings(pairingScore, unmatched, requirement.unknowns),
+    warnings: uniqueStrings([...warnings(pairingScore, unmatched, requirement.unknowns), ...library.warnings]),
     missing_information: requirement.unknowns,
     ready_for_codex: pairingScore >= 70,
     execution_level: pairingScore >= 90 ? "full" : pairingScore >= 70 ? "cautious" : "blocked",
+    dna_alignment: dnaAlignment(pairingScore),
+    activated_effects: activatedEffects,
+    case_recall: caseRecall,
+    rule_weight_adjustments: ruleWeightAdjustments(activatedEffects),
+    score_explanation: scoreExplanation(
+      baseScore,
+      pairingScore,
+      activatedEffects,
+      {
+        success: caseRecall.success_patterns.length,
+        failure: caseRecall.failure_patterns.length,
+        public: caseRecall.public_patterns.length
+      },
+      evidenceAdjustment
+    ),
+    codex_assistance: codexAssistanceSteps(pairingScore),
     created_at: nowIso()
   };
   let artifactPath;
@@ -16892,6 +17286,24 @@ async function pairStrands(input, memoryStore2) {
     );
   }
   return { pairing_result: result2, artifact_path: artifactPath };
+}
+function dnaQuery(requirement, analysis) {
+  return [
+    requirement.original_request,
+    requirement.core_goal,
+    requirement.features.join(" "),
+    requirement.constraints.join(" "),
+    requirement.preferences.join(" "),
+    requirement.acceptance_criteria.join(" "),
+    requirement.user_memory_related_rules.join(" "),
+    analysis.technical_goal,
+    analysis.suggested_architecture.join(" "),
+    analysis.required_modules.join(" "),
+    analysis.implementation_steps.join(" "),
+    analysis.risks.join(" "),
+    analysis.test_plan.join(" "),
+    analysis.assumptions.join(" ")
+  ].join("\n");
 }
 function addGoalPair(requirement, analysis, matched, unmatched) {
   const confidence = itemConfidence("Goal <-> Task", requirement.core_goal, analysis.technical_goal);
@@ -17110,6 +17522,19 @@ function score(matched, unmatched, unknowns2) {
   }
   return rawScore;
 }
+function applyEvidenceAdjustment(baseScore, adjustment, unknownCount) {
+  const adjusted = Math.max(0, Math.min(100, Math.round(baseScore + adjustment)));
+  if (unknownCount >= 3) {
+    return Math.min(adjusted, 64);
+  }
+  if (unknownCount >= 2) {
+    return Math.min(adjusted, 76);
+  }
+  if (baseScore < 70 && adjusted >= 70) {
+    return Math.min(adjusted, 72);
+  }
+  return adjusted;
+}
 function warnings(scoreValue, unmatched, missing) {
   const items = [];
   if (scoreValue >= 90) {
@@ -17129,7 +17554,7 @@ function warnings(scoreValue, unmatched, missing) {
 }
 
 // src/tools/scanProject.ts
-import { readFile as readFile2, readdir as readdir2, stat as stat2 } from "node:fs/promises";
+import { readFile as readFile3, readdir as readdir3, stat as stat3 } from "node:fs/promises";
 import { basename as basename2, extname, join as join2, relative, resolve as resolve2 } from "node:path";
 var ignoreDirs = /* @__PURE__ */ new Set([
   ".git",
@@ -17210,7 +17635,7 @@ var protectedNames = /* @__PURE__ */ new Set([
 ]);
 async function scanProject(input, memoryStore2) {
   const root = resolve2(input.project_path);
-  const rootStat = await stat2(root);
+  const rootStat = await stat3(root);
   if (!rootStat.isDirectory()) {
     throw new Error(`codedna_scan_project requires a directory: ${root}`);
   }
@@ -17253,7 +17678,7 @@ async function scanProject(input, memoryStore2) {
 async function walkFiles(root) {
   const result2 = [];
   async function visit(directory) {
-    const entries = await readdir2(directory, { withFileTypes: true });
+    const entries = await readdir3(directory, { withFileTypes: true });
     for (const entry of entries) {
       if (ignoreDirs.has(entry.name)) {
         continue;
@@ -17273,7 +17698,7 @@ async function readDependencyFile(root, file) {
   const name = basename2(file);
   let packages = [];
   try {
-    const text = await readFile2(file, "utf8");
+    const text = await readFile3(file, "utf8");
     if (name === "package.json") {
       const data = JSON.parse(text);
       packages = Object.keys({ ...data.dependencies ?? {}, ...data.devDependencies ?? {} }).sort();
@@ -17354,7 +17779,7 @@ function detectPackageManager(root, files, dependencies2) {
   return "unknown";
 }
 async function mainDirectories(root) {
-  const entries = await readdir2(root, { withFileTypes: true });
+  const entries = await readdir3(root, { withFileTypes: true });
   return entries.filter((entry) => entry.isDirectory() && !ignoreDirs.has(entry.name)).map((entry) => entry.name).sort();
 }
 function entryPoints(root, files) {
@@ -17395,7 +17820,7 @@ async function treeSummary(root, maxDepth) {
     if (depth > maxDepth || result2.length >= 300) {
       return;
     }
-    const entries = await readdir2(directory, { withFileTypes: true });
+    const entries = await readdir3(directory, { withFileTypes: true });
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (ignoreDirs.has(entry.name)) {
         continue;
@@ -17493,6 +17918,50 @@ Task ID: ${taskId}
 - Gate note: ${statusNote(pairing)}
 ${pairing.pairing_score < 70 ? "\n**Do not execute this task directly. Clarify the missing information before asking Codex to edit files.**\n" : ""}
 
+## CodeDNA Core Chain
+
+\`\`\`text
+\u7528\u6237\u9700\u6C42\u94FE
+    <-> \u914D\u5BF9\u5BA1\u67E5
+\u53CD\u5411\u89E3\u6790\u94FE
+    \u2193
+Codex \u4EFB\u52A1\u5305
+    \u2193
+\u4EE3\u7801\u6267\u884C
+    \u2193
+\u53CD\u5411\u5BA1\u67E5
+    \u2193
+\u8BB0\u5FC6\u8FDB\u5316
+\`\`\`
+
+${pairing.dna_alignment ? `- Requirement Strand: ${pairing.dna_alignment.requirement_strand}
+- Pairing Review: ${pairing.dna_alignment.pairing_review}
+- Analysis Strand: ${pairing.dna_alignment.analysis_strand}
+- Execution Layer: ${pairing.dna_alignment.execution_layer}
+- Feedback Layer: ${pairing.dna_alignment.feedback_layer}
+- Evolution Layer: ${pairing.dna_alignment.evolution_layer}
+- Gate Status: ${pairing.dna_alignment.gate_status}` : "- DNA alignment metadata is not available."}
+
+## Score Evidence
+
+${bullets(pairing.score_explanation ?? [])}
+
+## Activated CodeDNA Effects
+
+${effects(pairing.activated_effects ?? [])}
+
+## Relevant Success Patterns
+
+${recalledCases(pairing.case_recall?.success_patterns ?? [])}
+
+## Relevant Failure Patterns
+
+${recalledCases(pairing.case_recall?.failure_patterns ?? [])}
+
+## Codex Assistance Handoff
+
+${codexAssistance(pairing.codex_assistance ?? [])}
+
 ## Original User Request
 
 ${requirement.original_request}
@@ -17567,6 +18036,7 @@ ${pairing.unmatched_pairs.length ? pairs(pairing.unmatched_pairs) : "- None"}
 
 - Confirm the final diff only touches files needed for this task.
 - Confirm every user constraint is addressed explicitly.
+- Confirm the output followed the CodeDNA chain: requirement strand, pairing review, reverse analysis, execution, reverse review, memory proposal when appropriate.
 - Run verification commands or explain why they cannot be run.
 - Summarize changed files, behavior, tests, and residual risks.
 - Do not claim completion without evidence from inspection or verification.
@@ -17633,6 +18103,24 @@ function pairs(items) {
   }
   return items.map((item) => `- **${item.pair_type}** \`${item.status}\` (${item.confidence.toFixed(2)}): ${item.requirement_item} -> ${item.analysis_item || "missing"}`).join("\n");
 }
+function effects(items) {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items.map((item) => `- **${item.effect_family}** -> ${item.pair_type} (weight ${item.weight}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
+}
+function recalledCases(items) {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items.map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
+}
+function codexAssistance(items) {
+  if (items.length === 0) {
+    return "- Use Codex to implement only after the task pack and guardrails are reviewed.";
+  }
+  return items.map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`).join("\n");
+}
 function artifactId(prefix, createdAt, label) {
   const stamp = (createdAt || (/* @__PURE__ */ new Date()).toISOString()).replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z").replace(/[^\dTZ]/g, "");
   return `${prefix}-${stamp}-${sanitizeFilename(label, "task")}`.slice(0, 140);
@@ -17646,7 +18134,8 @@ async function reviewCodexOutput(input, memoryStore2) {
   const verdict = finalVerdict(checks);
   const nextPrompt = nextFixPrompt(input.requirement_strand, checks);
   const reviewId = artifactId2("codedna-review", input.requirement_strand.created_at, input.requirement_strand.core_goal);
-  const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt);
+  const caseRecall = await reviewCaseRecall(input);
+  const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
   let artifactPath;
   if (input.save !== false) {
     artifactPath = await memoryStore2.saveMarkdown(
@@ -17665,6 +18154,20 @@ async function reviewCodexOutput(input, memoryStore2) {
     },
     artifact_path: artifactPath
   };
+}
+async function reviewCaseRecall(input) {
+  const query = [
+    input.requirement_strand.original_request,
+    input.requirement_strand.core_goal,
+    input.requirement_strand.constraints.join(" "),
+    input.requirement_strand.acceptance_criteria.join(" "),
+    input.analysis_strand.technical_goal,
+    input.analysis_strand.risks.join(" "),
+    input.analysis_strand.test_plan.join(" "),
+    input.codex_output
+  ].join("\n");
+  const library = await loadCaseLibrary();
+  return recallCases(library, query, inferEffectFamilies(query));
 }
 function modifiedFilesFromText(text) {
   const files = /* @__PURE__ */ new Set();
@@ -17841,7 +18344,7 @@ ${bullets4}
 
 Return a concise summary, changed files, and verification evidence.`;
 }
-function renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt) {
+function renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall) {
   const byName = (name) => checks.find((check) => check.name === name) ?? {
     name,
     status: "review",
@@ -17852,6 +18355,25 @@ function renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPromp
   return `# CodeDNA Review Report
 
 Review ID: ${reviewId}
+
+## CodeDNA Reverse Chain
+
+\`\`\`text
+\u7528\u6237\u9700\u6C42\u94FE
+    <-> \u914D\u5BF9\u5BA1\u67E5
+\u53CD\u5411\u89E3\u6790\u94FE
+    \u2193
+Codex \u4EFB\u52A1\u5305
+    \u2193
+\u4EE3\u7801\u6267\u884C
+    \u2193
+\u53CD\u5411\u5BA1\u67E5
+    \u2193
+\u8BB0\u5FC6\u8FDB\u5316
+\`\`\`
+
+- Current Layer: \u53CD\u5411\u5BA1\u67E5
+- Next Layer: ${requiredFixes.length ? "Focused Codex repair task" : "\u8BB0\u5FC6\u8FDB\u5316 proposal if the user confirms a reusable lesson"}
 
 ## Original Requirement
 
@@ -17915,6 +18437,18 @@ ${checkBlock(byName("Assumptions Missing"))}
 
 ${requiredFixes.length ? requiredFixes.map((check) => `- ${check.name}: ${check.detail}`).join("\n") : "- None"}
 
+## Relevant Failure Patterns
+
+${recalledCases2(caseRecall.failure_patterns)}
+
+## Relevant Success Patterns
+
+${recalledCases2(caseRecall.success_patterns)}
+
+## Memory Evolution Proposal
+
+${memoryEvolutionProposal(verdict, requiredFixes)}
+
 ## Review Check Table
 
 | Check | Status | Detail |
@@ -17940,6 +18474,25 @@ function checkBlock(check) {
 function codexOutputSummary(output) {
   const lines = output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).filter((line) => !line.startsWith("diff --git")).slice(0, 8);
   return lines.length ? lines.map((line) => `- ${line.replace(/^\s*[-*]\s*/, "")}`).join("\n") : "- No summary text was provided.";
+}
+function recalledCases2(items) {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items.map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
+}
+function memoryEvolutionProposal(verdict, requiredFixes) {
+  if (verdict === "pass") {
+    return "- Proposal: record the verified pattern only if the user confirms it should become reusable CodeDNA memory.";
+  }
+  if (requiredFixes.length > 0) {
+    return [
+      "- Proposal: do not write long-term memory automatically.",
+      "- Ask the user whether the failed pattern should be saved as a rejected pattern after the repair is complete.",
+      "- If the user confirms, use the memory proposal and confirmation flow rather than silent writes."
+    ].join("\n");
+  }
+  return "- Proposal: keep this result as short-term review context unless the user confirms a durable preference.";
 }
 function artifactId2(prefix, createdAt, label) {
   const stamp = (createdAt || (/* @__PURE__ */ new Date()).toISOString()).replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z").replace(/[^\dTZ]/g, "");
@@ -18074,10 +18627,10 @@ async function loadMemory(memoryStore2) {
 }
 
 // src/tools/runFullWorkflow.ts
-import { stat as stat4 } from "node:fs/promises";
+import { stat as stat5 } from "node:fs/promises";
 
 // src/tools/buildProjectGenome.ts
-import { readFile as readFile3, readdir as readdir3, stat as stat3 } from "node:fs/promises";
+import { readFile as readFile4, readdir as readdir4, stat as stat4 } from "node:fs/promises";
 import { basename as basename3, join as join3, relative as relative2, resolve as resolve3 } from "node:path";
 var ignoreDirs2 = /* @__PURE__ */ new Set([
   ".git",
@@ -18115,7 +18668,7 @@ var sensitiveFiles = [
 ];
 async function buildProjectGenome(input, memoryStore2) {
   const projectRoot = resolve3(input.project_path);
-  const rootStat = await stat3(projectRoot);
+  const rootStat = await stat4(projectRoot);
   if (!rootStat.isDirectory()) {
     throw new Error(`codedna_build_project_genome requires a directory: ${projectRoot}`);
   }
@@ -18162,7 +18715,7 @@ async function buildProjectGenome(input, memoryStore2) {
 async function walkFiles2(root) {
   const result2 = [];
   async function visit(directory) {
-    const entries = await readdir3(directory, { withFileTypes: true });
+    const entries = await readdir4(directory, { withFileTypes: true });
     for (const entry of entries) {
       if (ignoreDirs2.has(entry.name)) {
         continue;
@@ -18180,7 +18733,7 @@ async function walkFiles2(root) {
 }
 async function readExistingGenome(projectRoot) {
   try {
-    const text = await readFile3(join3(projectRoot, ".codedna", "project-genome.json"), "utf8");
+    const text = await readFile4(join3(projectRoot, ".codedna", "project-genome.json"), "utf8");
     return JSON.parse(text);
   } catch {
     return void 0;
@@ -18400,10 +18953,10 @@ function buildRequest(request, optionalConstraints) {
 Additional constraints:
 ${constraints.map((item) => `- ${item}`).join("\n")}`;
 }
-async function assertDirectory(path) {
-  const value = await stat4(path);
+async function assertDirectory(path2) {
+  const value = await stat5(path2);
   if (!value.isDirectory()) {
-    throw new Error(`Not a directory: ${path}`);
+    throw new Error(`Not a directory: ${path2}`);
   }
 }
 function highRiskRequest(request) {
@@ -19683,7 +20236,7 @@ function clampScore(value) {
 }
 
 // src/server.ts
-var currentDir = dirname3(fileURLToPath(import.meta.url));
+var currentDir = dirname3(fileURLToPath2(import.meta.url));
 var pluginRoot = resolve4(currentDir, "../..");
 var dataRoot = resolve4(process.env.CODEDNA_DATA_DIR || process.env.PLUGIN_DATA || join4(pluginRoot, "data"));
 var memoryStore = new MemoryStore(dataRoot);

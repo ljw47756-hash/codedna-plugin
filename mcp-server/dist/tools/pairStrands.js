@@ -1,13 +1,8 @@
 import { nowIso, timestampedName } from "../storage/jsonStore.js";
-import { similarity, tokens } from "./common.js";
-const pairWeights = {
-    "Goal <-> Task": 20,
-    "Constraint <-> Risk": 18,
-    "Preference <-> Pattern": 14,
-    "Feature <-> Module": 20,
-    "Acceptance <-> Test": 18,
-    "Memory <-> Reuse": 10
-};
+import { inferEffectFamilies, loadCaseLibrary, recallCases } from "../caseLibrary/caseLibrary.js";
+import { activateEffects, basePairWeights, codexAssistanceSteps, dnaAlignment, ruleWeightAdjustments, scoreAdjustmentFromEffects, scoreExplanation } from "../caseLibrary/effectWeights.js";
+import { similarity, tokens, uniqueStrings } from "./common.js";
+const pairWeights = basePairWeights;
 export async function pairStrands(input, memoryStore) {
     const requirement = input.requirement_strand;
     const analysis = input.analysis_strand;
@@ -22,15 +17,32 @@ export async function pairStrands(input, memoryStore) {
     addCollectionPairs("Feature <-> Module", requirement.features, analysis.required_modules, matched, unmatched);
     addCollectionPairs("Acceptance <-> Test", requirement.acceptance_criteria, analysis.test_plan, matched, unmatched);
     addCollectionPairs("Memory <-> Reuse", requirement.user_memory_related_rules, [...analysis.suggested_architecture, ...analysis.assumptions], matched, unmatched);
-    const pairingScore = score(matched, unmatched, requirement.unknowns);
+    const baseScore = score(matched, unmatched, requirement.unknowns);
+    const query = dnaQuery(requirement, analysis);
+    const library = await loadCaseLibrary();
+    const inferredFamilies = inferEffectFamilies(query);
+    const activatedEffects = activateEffects(library, query, inferredFamilies);
+    const caseRecall = recallCases(library, query, inferredFamilies);
+    const evidenceAdjustment = scoreAdjustmentFromEffects(activatedEffects, requirement.unknowns.length, unmatched.length);
+    const pairingScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
     const result = {
         pairing_score: pairingScore,
         matched_pairs: matched,
         unmatched_pairs: unmatched,
-        warnings: warnings(pairingScore, unmatched, requirement.unknowns),
+        warnings: uniqueStrings([...warnings(pairingScore, unmatched, requirement.unknowns), ...library.warnings]),
         missing_information: requirement.unknowns,
         ready_for_codex: pairingScore >= 70,
         execution_level: pairingScore >= 90 ? "full" : pairingScore >= 70 ? "cautious" : "blocked",
+        dna_alignment: dnaAlignment(pairingScore),
+        activated_effects: activatedEffects,
+        case_recall: caseRecall,
+        rule_weight_adjustments: ruleWeightAdjustments(activatedEffects),
+        score_explanation: scoreExplanation(baseScore, pairingScore, activatedEffects, {
+            success: caseRecall.success_patterns.length,
+            failure: caseRecall.failure_patterns.length,
+            public: caseRecall.public_patterns.length
+        }, evidenceAdjustment),
+        codex_assistance: codexAssistanceSteps(pairingScore),
         created_at: nowIso()
     };
     let artifactPath;
@@ -38,6 +50,24 @@ export async function pairStrands(input, memoryStore) {
         artifactPath = await memoryStore.saveArtifact(`strands/${timestampedName(requirement.core_goal, ".pairing.json")}`, result);
     }
     return { pairing_result: result, artifact_path: artifactPath };
+}
+function dnaQuery(requirement, analysis) {
+    return [
+        requirement.original_request,
+        requirement.core_goal,
+        requirement.features.join(" "),
+        requirement.constraints.join(" "),
+        requirement.preferences.join(" "),
+        requirement.acceptance_criteria.join(" "),
+        requirement.user_memory_related_rules.join(" "),
+        analysis.technical_goal,
+        analysis.suggested_architecture.join(" "),
+        analysis.required_modules.join(" "),
+        analysis.implementation_steps.join(" "),
+        analysis.risks.join(" "),
+        analysis.test_plan.join(" "),
+        analysis.assumptions.join(" ")
+    ].join("\n");
 }
 function addGoalPair(requirement, analysis, matched, unmatched) {
     const confidence = itemConfidence("Goal <-> Task", requirement.core_goal, analysis.technical_goal);
@@ -259,6 +289,19 @@ function score(matched, unmatched, unknowns) {
         return Math.min(rawScore, 76);
     }
     return rawScore;
+}
+function applyEvidenceAdjustment(baseScore, adjustment, unknownCount) {
+    const adjusted = Math.max(0, Math.min(100, Math.round(baseScore + adjustment)));
+    if (unknownCount >= 3) {
+        return Math.min(adjusted, 64);
+    }
+    if (unknownCount >= 2) {
+        return Math.min(adjusted, 76);
+    }
+    if (baseScore < 70 && adjusted >= 70) {
+        return Math.min(adjusted, 72);
+    }
+    return adjusted;
 }
 function warnings(scoreValue, unmatched, missing) {
     const items = [];

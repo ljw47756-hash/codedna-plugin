@@ -9,8 +9,26 @@ description: Use when CodeDNA should load or update local memory about user pref
 
 memory-evolution
 
-## when_to_use
 
+## CodeDNA Core Chain
+
+Every CodeDNA skill belongs to this main chain:
+
+```text
+User Requirement Strand
+    <-> Bidirectional Pairing Review
+Reverse Analysis Strand
+    -> Codex Task Pack
+    -> Code Execution
+    -> Reverse Review
+    -> Memory Evolution
+```
+
+## Codex Assistance Rule
+
+CodeDNA does not replace Codex. The MCP tools produce structured strands, scores, guardrails, task packs, reports, and memory proposals. After each CodeDNA stage, Codex must use its own reasoning, coding, inspection, and verification capabilities to continue the work safely.
+
+## when_to_use
 Use when the user says "remember this", "do this next time", "I prefer", "never do that again", confirms a memory proposal, or when a completed task reveals a reusable successful or rejected pattern.
 
 ## when_not_to_use

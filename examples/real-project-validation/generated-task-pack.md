@@ -126,7 +126,7 @@ Add a login page for the existing app with a dark minimal visual style. Support 
   "assumptions": [
     "Codex will inspect files before editing them.",
     "The user wants scoped changes rather than broad refactors.",
-    "The selected project root is E:\\chat-codex\\CodeDNA\\codedna-plugin."
+    "The selected project root is <plugin-root>."
   ],
   "created_at": "2026-06-14T06:30:04.726Z"
 }

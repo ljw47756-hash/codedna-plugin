@@ -9,8 +9,26 @@ description: Use when producing a copy-ready Markdown task pack for Codex implem
 
 codex-task-pack
 
-## when_to_use
 
+## CodeDNA Core Chain
+
+Every CodeDNA skill belongs to this main chain:
+
+```text
+User Requirement Strand
+    <-> Bidirectional Pairing Review
+Reverse Analysis Strand
+    -> Codex Task Pack
+    -> Code Execution
+    -> Reverse Review
+    -> Memory Evolution
+```
+
+## Codex Assistance Rule
+
+CodeDNA does not replace Codex. The MCP tools produce structured strands, scores, guardrails, task packs, reports, and memory proposals. After each CodeDNA stage, Codex must use its own reasoning, coding, inspection, and verification capabilities to continue the work safely.
+
+## when_to_use
 Use after pairing review when the user needs a Codex-ready implementation brief, especially for complex coding work or when the user says "generate a task pack".
 
 ## when_not_to_use

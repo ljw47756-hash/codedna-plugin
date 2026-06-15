@@ -9,8 +9,26 @@ description: Use when transforming a natural-language coding request into a stru
 
 requirement-capture
 
-## when_to_use
 
+## CodeDNA Core Chain
+
+Every CodeDNA skill belongs to this main chain:
+
+```text
+User Requirement Strand
+    <-> Bidirectional Pairing Review
+Reverse Analysis Strand
+    -> Codex Task Pack
+    -> Code Execution
+    -> Reverse Review
+    -> Memory Evolution
+```
+
+## Codex Assistance Rule
+
+CodeDNA does not replace Codex. The MCP tools produce structured strands, scores, guardrails, task packs, reports, and memory proposals. After each CodeDNA stage, Codex must use its own reasoning, coding, inspection, and verification capabilities to continue the work safely.
+
+## when_to_use
 Use when the user gives a feature request, bug request, refactor request, design preference, restriction, acceptance criterion, or project instruction that should become structured JSON before planning.
 
 ## when_not_to_use

@@ -2,7 +2,7 @@
 
 ## Project
 
-C:\path\to\codedna-plugin
+<plugin-root>
 
 ## Request
 
@@ -48,23 +48,23 @@ node ./mcp-server/dist/server.js
 
 ## Pairing Result
 
-- Pairing Score: 92
+- Pairing Score: 99
 - Execution Level: full
 - Ready For Codex: yes
 
 ## Generated Artifacts
 
-- project_profile: C:\path\to\codedna-plugin\data\memory\project_profiles\codedna-plugin_project_profile.json
-- requirement: C:\path\to\codedna-plugin\data\strands\20260614T063004Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.requirement.json
-- analysis: C:\path\to\codedna-plugin\data\strands\20260614T063004Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.analysis.json
-- pairing: C:\path\to\codedna-plugin\data\strands\20260614T063004Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.pairing.json
-- task_pack: C:\path\to\codedna-plugin\data\tasks\20260614T063004Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.codex_task.md
-- review: C:\path\to\codedna-plugin\data\reviews\20260614T063004Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.review.md
+- project_profile: <plugin-root>\data\memory\project_profiles\codedna-plugin_project_profile.json
+- requirement: <plugin-root>\data\strands\20260615T170820Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.requirement.json
+- analysis: <plugin-root>\data\strands\20260615T170820Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.analysis.json
+- pairing: <plugin-root>\data\strands\20260615T170821Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.pairing.json
+- task_pack: <plugin-root>\data\tasks\20260615T170821Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.codex_task.md
+- review: <plugin-root>\data\reviews\20260615T170821Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.review.md
 
 ## Generated Example Files
 
-- task_pack: C:\path\to\codedna-plugin\examples\real-project-validation\generated-task-pack.md
-- review_report: C:\path\to\codedna-plugin\examples\real-project-validation\generated-review-report.md
+- task_pack: <plugin-root>\examples\real-project-validation\generated-task-pack.md
+- review_report: <plugin-root>\examples\real-project-validation\generated-review-report.md
 
 ## Memory Update
 

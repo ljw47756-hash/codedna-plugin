@@ -1,19 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="520" viewBox="0 0 1100 520" role="img" aria-labelledby="title desc">
-  <title id="title">CodeDNA GitHub install example</title>
-  <desc id="desc">A clean example showing the Codex App marketplace fields for installing CodeDNA from GitHub.</desc>
-  <rect width="1100" height="520" rx="28" fill="#f8fafc"/>
-  <rect x="56" y="52" width="988" height="416" rx="24" fill="#ffffff" stroke="#dbe3ee"/>
-  <text x="96" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">添加 CodeDNA 插件市场</text>
-  <text x="96" y="152" font-family="Segoe UI, Arial, sans-serif" font-size="19" fill="#64748b">在 Codex App 中添加 GitHub 仓库作为插件市场</text>
-  <text x="96" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#334155">来源</text>
-  <rect x="96" y="232" width="908" height="56" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
-  <text x="120" y="267" font-family="Cascadia Mono, Consolas, monospace" font-size="20" fill="#0f172a">https://github.com/ljw47756-hash/codedna-plugin.git</text>
-  <text x="96" y="326" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#334155">Git 引用</text>
-  <rect x="96" y="344" width="320" height="56" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
-  <text x="120" y="379" font-family="Cascadia Mono, Consolas, monospace" font-size="20" fill="#0f172a">main</text>
-  <text x="456" y="326" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#334155">稀疏路径</text>
-  <rect x="456" y="344" width="548" height="56" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
-  <text x="480" y="379" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#64748b">留空</text>
-  <rect x="790" y="420" width="214" height="48" rx="24" fill="#2563eb"/>
-  <text x="846" y="451" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff">添加市场</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+  <title id="title">CodeDNA install settings</title>
+  <desc id="desc">Recommended fields for adding the CodeDNA plugin marketplace in Codex App.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0fdfa"/>
+      <stop offset="1" stop-color="#f8fafc"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0f172a" flood-opacity=".12"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="560" rx="34" fill="url(#bg)"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="90" y="92" font-size="38" font-weight="800" fill="#0f172a">在 Codex App 中添加 CodeDNA</text>
+    <text x="90" y="132" font-size="20" fill="#475569">添加插件市场时只需要填写仓库地址、分支，稀疏路径保持留空。</text>
+    <g filter="url(#shadow)">
+      <rect x="140" y="190" width="1000" height="260" rx="26" fill="#ffffff" stroke="#dbeafe"/>
+      <text x="190" y="250" font-size="20" font-weight="700" fill="#334155">来源</text>
+      <rect x="300" y="220" width="760" height="48" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+      <text x="326" y="252" font-size="18" fill="#0f172a">https://github.com/ljw47756-hash/codedna-plugin.git</text>
+      <text x="190" y="320" font-size="20" font-weight="700" fill="#334155">Git 引用</text>
+      <rect x="300" y="290" width="760" height="48" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+      <text x="326" y="322" font-size="18" fill="#0f172a">main</text>
+      <text x="190" y="390" font-size="20" font-weight="700" fill="#334155">稀疏路径</text>
+      <rect x="300" y="360" width="760" height="48" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+      <text x="326" y="392" font-size="18" fill="#64748b">留空</text>
+    </g>
+  </g>
 </svg>

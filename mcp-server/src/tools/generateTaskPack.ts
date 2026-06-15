@@ -1,7 +1,7 @@
 import { sanitizeFilename, timestampedName } from "../storage/jsonStore.js";
 import type { MemoryStore } from "../storage/memoryStore.js";
 import type { AnalysisStrand } from "../types/analysisStrand.js";
-import type { PairingResult, StrandPair } from "../types/pairingResult.js";
+import type { ActivatedEffect, CodexAssistanceStep, PairingResult, RecalledCase, StrandPair } from "../types/pairingResult.js";
 import type { ProjectProfile } from "../types/projectProfile.js";
 import type { RequirementStrand } from "../types/requirementStrand.js";
 import { uniqueStrings } from "./common.js";
@@ -71,6 +71,50 @@ Task ID: ${taskId}
 - Ready for Codex: ${pairing.ready_for_codex ? "yes" : "no"}
 - Gate note: ${statusNote(pairing)}
 ${pairing.pairing_score < 70 ? "\n**Do not execute this task directly. Clarify the missing information before asking Codex to edit files.**\n" : ""}
+
+## CodeDNA Core Chain
+
+\`\`\`text
+用户需求链
+    <-> 配对审查
+反向解析链
+    ↓
+Codex 任务包
+    ↓
+代码执行
+    ↓
+反向审查
+    ↓
+记忆进化
+\`\`\`
+
+${pairing.dna_alignment ? `- Requirement Strand: ${pairing.dna_alignment.requirement_strand}
+- Pairing Review: ${pairing.dna_alignment.pairing_review}
+- Analysis Strand: ${pairing.dna_alignment.analysis_strand}
+- Execution Layer: ${pairing.dna_alignment.execution_layer}
+- Feedback Layer: ${pairing.dna_alignment.feedback_layer}
+- Evolution Layer: ${pairing.dna_alignment.evolution_layer}
+- Gate Status: ${pairing.dna_alignment.gate_status}` : "- DNA alignment metadata is not available."}
+
+## Score Evidence
+
+${bullets(pairing.score_explanation ?? [])}
+
+## Activated CodeDNA Effects
+
+${effects(pairing.activated_effects ?? [])}
+
+## Relevant Success Patterns
+
+${recalledCases(pairing.case_recall?.success_patterns ?? [])}
+
+## Relevant Failure Patterns
+
+${recalledCases(pairing.case_recall?.failure_patterns ?? [])}
+
+## Codex Assistance Handoff
+
+${codexAssistance(pairing.codex_assistance ?? [])}
 
 ## Original User Request
 
@@ -146,6 +190,7 @@ ${pairing.unmatched_pairs.length ? pairs(pairing.unmatched_pairs) : "- None"}
 
 - Confirm the final diff only touches files needed for this task.
 - Confirm every user constraint is addressed explicitly.
+- Confirm the output followed the CodeDNA chain: requirement strand, pairing review, reverse analysis, execution, reverse review, memory proposal when appropriate.
 - Run verification commands or explain why they cannot be run.
 - Summarize changed files, behavior, tests, and residual risks.
 - Do not claim completion without evidence from inspection or verification.
@@ -218,6 +263,33 @@ function pairs(items: StrandPair[]): string {
   }
   return items
     .map((item) => `- **${item.pair_type}** \`${item.status}\` (${item.confidence.toFixed(2)}): ${item.requirement_item} -> ${item.analysis_item || "missing"}`)
+    .join("\n");
+}
+
+function effects(items: ActivatedEffect[]): string {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items
+    .map((item) => `- **${item.effect_family}** -> ${item.pair_type} (weight ${item.weight}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
+    .join("\n");
+}
+
+function recalledCases(items: RecalledCase[]): string {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items
+    .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
+    .join("\n");
+}
+
+function codexAssistance(items: CodexAssistanceStep[]): string {
+  if (items.length === 0) {
+    return "- Use Codex to implement only after the task pack and guardrails are reviewed.";
+  }
+  return items
+    .map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`)
     .join("\n");
 }
 

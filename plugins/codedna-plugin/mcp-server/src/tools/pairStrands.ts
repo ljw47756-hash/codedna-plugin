@@ -3,16 +3,19 @@ import type { MemoryStore } from "../storage/memoryStore.js";
 import type { AnalysisStrand } from "../types/analysisStrand.js";
 import type { PairingResult, StrandPair } from "../types/pairingResult.js";
 import type { RequirementStrand } from "../types/requirementStrand.js";
-import { similarity, tokens } from "./common.js";
+import { inferEffectFamilies, loadCaseLibrary, recallCases } from "../caseLibrary/caseLibrary.js";
+import {
+  activateEffects,
+  basePairWeights,
+  codexAssistanceSteps,
+  dnaAlignment,
+  ruleWeightAdjustments,
+  scoreAdjustmentFromEffects,
+  scoreExplanation
+} from "../caseLibrary/effectWeights.js";
+import { similarity, tokens, uniqueStrings } from "./common.js";
 
-const pairWeights: Record<string, number> = {
-  "Goal <-> Task": 20,
-  "Constraint <-> Risk": 18,
-  "Preference <-> Pattern": 14,
-  "Feature <-> Module": 20,
-  "Acceptance <-> Test": 18,
-  "Memory <-> Reuse": 10
-};
+const pairWeights: Record<string, number> = basePairWeights;
 
 export interface PairStrandsInput {
   requirement_strand: RequirementStrand;
@@ -41,15 +44,38 @@ export async function pairStrands(input: PairStrandsInput, memoryStore: MemorySt
   addCollectionPairs("Acceptance <-> Test", requirement.acceptance_criteria, analysis.test_plan, matched, unmatched);
   addCollectionPairs("Memory <-> Reuse", requirement.user_memory_related_rules, [...analysis.suggested_architecture, ...analysis.assumptions], matched, unmatched);
 
-  const pairingScore = score(matched, unmatched, requirement.unknowns);
+  const baseScore = score(matched, unmatched, requirement.unknowns);
+  const query = dnaQuery(requirement, analysis);
+  const library = await loadCaseLibrary();
+  const inferredFamilies = inferEffectFamilies(query);
+  const activatedEffects = activateEffects(library, query, inferredFamilies);
+  const caseRecall = recallCases(library, query, inferredFamilies);
+  const evidenceAdjustment = scoreAdjustmentFromEffects(activatedEffects, requirement.unknowns.length, unmatched.length);
+  const pairingScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
   const result: PairingResult = {
     pairing_score: pairingScore,
     matched_pairs: matched,
     unmatched_pairs: unmatched,
-    warnings: warnings(pairingScore, unmatched, requirement.unknowns),
+    warnings: uniqueStrings([...warnings(pairingScore, unmatched, requirement.unknowns), ...library.warnings]),
     missing_information: requirement.unknowns,
     ready_for_codex: pairingScore >= 70,
     execution_level: pairingScore >= 90 ? "full" : pairingScore >= 70 ? "cautious" : "blocked",
+    dna_alignment: dnaAlignment(pairingScore),
+    activated_effects: activatedEffects,
+    case_recall: caseRecall,
+    rule_weight_adjustments: ruleWeightAdjustments(activatedEffects),
+    score_explanation: scoreExplanation(
+      baseScore,
+      pairingScore,
+      activatedEffects,
+      {
+        success: caseRecall.success_patterns.length,
+        failure: caseRecall.failure_patterns.length,
+        public: caseRecall.public_patterns.length
+      },
+      evidenceAdjustment
+    ),
+    codex_assistance: codexAssistanceSteps(pairingScore),
     created_at: nowIso()
   };
 
@@ -61,6 +87,25 @@ export async function pairStrands(input: PairStrandsInput, memoryStore: MemorySt
     );
   }
   return { pairing_result: result, artifact_path: artifactPath };
+}
+
+function dnaQuery(requirement: RequirementStrand, analysis: AnalysisStrand): string {
+  return [
+    requirement.original_request,
+    requirement.core_goal,
+    requirement.features.join(" "),
+    requirement.constraints.join(" "),
+    requirement.preferences.join(" "),
+    requirement.acceptance_criteria.join(" "),
+    requirement.user_memory_related_rules.join(" "),
+    analysis.technical_goal,
+    analysis.suggested_architecture.join(" "),
+    analysis.required_modules.join(" "),
+    analysis.implementation_steps.join(" "),
+    analysis.risks.join(" "),
+    analysis.test_plan.join(" "),
+    analysis.assumptions.join(" ")
+  ].join("\n");
 }
 
 function addGoalPair(
@@ -307,6 +352,20 @@ function score(matched: StrandPair[], unmatched: StrandPair[], unknowns: string[
     return Math.min(rawScore, 76);
   }
   return rawScore;
+}
+
+function applyEvidenceAdjustment(baseScore: number, adjustment: number, unknownCount: number): number {
+  const adjusted = Math.max(0, Math.min(100, Math.round(baseScore + adjustment)));
+  if (unknownCount >= 3) {
+    return Math.min(adjusted, 64);
+  }
+  if (unknownCount >= 2) {
+    return Math.min(adjusted, 76);
+  }
+  if (baseScore < 70 && adjusted >= 70) {
+    return Math.min(adjusted, 72);
+  }
+  return adjusted;
 }
 
 function warnings(scoreValue: number, unmatched: StrandPair[], missing: string[]): string[] {

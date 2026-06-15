@@ -1,7 +1,7 @@
 {
   "name": "codedna-plugin",
-  "version": "0.1.6+codex.20260615170600",
-  "description": "CodeDNA orchestrates Codex coding work with requirement capture, reverse analysis, Project Genome, guardrails, task packs, diff review, repair tasks, outcome scoring, and layered local memory.",
+  "version": "0.1.7+codex.20260616000000",
+  "description": "CodeDNA helps Codex handle complex coding tasks through a double-strand planning, execution, review, and memory workflow.",
   "author": {
     "name": "CodeDNA",
     "email": "ljw47756-hash@users.noreply.github.com",
@@ -23,8 +23,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "CodeDNA",
-    "shortDescription": "Plan, guard, review, repair, score, and remember Codex coding tasks.",
-    "longDescription": "CodeDNA is a local Codex workflow plugin for complex coding work. It captures the user's Requirement Strand, generates a reverse Analysis Strand, builds a Project Genome, pairs both strands, blocks under-specified tasks, writes copy-ready Codex Task Packs, generates guardrails, reviews diffs for risk, creates focused repair tasks, scores outcomes, and evolves layered local memory without external AI APIs.",
+    "shortDescription": "Guide Codex through high-stakes coding tasks with planning, review, and local memory.",
+    "longDescription": "CodeDNA is a local Codex workflow plugin for complex coding work. It helps Codex turn user intent into a structured plan, keep execution inside clear boundaries, review the result against the original request, and preserve confirmed learning locally. Public documentation describes the workflow at a high level while the plugin performs the detailed orchestration inside Codex.",
     "developerName": "CodeDNA",
     "category": "Productivity",
     "capabilities": [

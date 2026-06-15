@@ -9,8 +9,26 @@ description: Use when turning CodeDNA acceptance criteria, risks, and project sc
 
 test-planner
 
-## when_to_use
 
+## CodeDNA Core Chain
+
+Every CodeDNA skill belongs to this main chain:
+
+```text
+User Requirement Strand
+    <-> Bidirectional Pairing Review
+Reverse Analysis Strand
+    -> Codex Task Pack
+    -> Code Execution
+    -> Reverse Review
+    -> Memory Evolution
+```
+
+## Codex Assistance Rule
+
+CodeDNA does not replace Codex. The MCP tools produce structured strands, scores, guardrails, task packs, reports, and memory proposals. After each CodeDNA stage, Codex must use its own reasoning, coding, inspection, and verification capabilities to continue the work safely.
+
+## when_to_use
 Use when the user asks how to test a CodeDNA task, when acceptance criteria need verification mapping, or when a task pack needs a stronger Test Plan.
 
 ## when_not_to_use

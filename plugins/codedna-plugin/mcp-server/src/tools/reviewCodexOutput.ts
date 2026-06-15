@@ -1,6 +1,8 @@
 import { sanitizeFilename, timestampedName } from "../storage/jsonStore.js";
 import type { MemoryStore } from "../storage/memoryStore.js";
+import { inferEffectFamilies, loadCaseLibrary, recallCases } from "../caseLibrary/caseLibrary.js";
 import type { AnalysisStrand } from "../types/analysisStrand.js";
+import type { CaseRecall, RecalledCase } from "../types/pairingResult.js";
 import type { ProjectProfile } from "../types/projectProfile.js";
 import type { RequirementStrand } from "../types/requirementStrand.js";
 
@@ -43,7 +45,8 @@ export async function reviewCodexOutput(
   const verdict = finalVerdict(checks);
   const nextPrompt = nextFixPrompt(input.requirement_strand, checks);
   const reviewId = artifactId("codedna-review", input.requirement_strand.created_at, input.requirement_strand.core_goal);
-  const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt);
+  const caseRecall = await reviewCaseRecall(input);
+  const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
   let artifactPath: string | undefined;
   if (input.save !== false) {
     artifactPath = await memoryStore.saveMarkdown(
@@ -62,6 +65,21 @@ export async function reviewCodexOutput(
     },
     artifact_path: artifactPath
   };
+}
+
+async function reviewCaseRecall(input: ReviewCodexOutputInput): Promise<CaseRecall> {
+  const query = [
+    input.requirement_strand.original_request,
+    input.requirement_strand.core_goal,
+    input.requirement_strand.constraints.join(" "),
+    input.requirement_strand.acceptance_criteria.join(" "),
+    input.analysis_strand.technical_goal,
+    input.analysis_strand.risks.join(" "),
+    input.analysis_strand.test_plan.join(" "),
+    input.codex_output
+  ].join("\n");
+  const library = await loadCaseLibrary();
+  return recallCases(library, query, inferEffectFamilies(query));
 }
 
 function modifiedFilesFromText(text: string): string[] {
@@ -252,7 +270,8 @@ function renderReview(
   verdict: ReviewVerdict,
   checks: ReviewCheck[],
   modifiedFiles: string[],
-  nextPrompt: string
+  nextPrompt: string,
+  caseRecall: CaseRecall
 ): string {
   const byName = (name: string): ReviewCheck => checks.find((check) => check.name === name) ?? {
     name,
@@ -264,6 +283,25 @@ function renderReview(
   return `# CodeDNA Review Report
 
 Review ID: ${reviewId}
+
+## CodeDNA Reverse Chain
+
+\`\`\`text
+用户需求链
+    <-> 配对审查
+反向解析链
+    ↓
+Codex 任务包
+    ↓
+代码执行
+    ↓
+反向审查
+    ↓
+记忆进化
+\`\`\`
+
+- Current Layer: 反向审查
+- Next Layer: ${requiredFixes.length ? "Focused Codex repair task" : "记忆进化 proposal if the user confirms a reusable lesson"}
 
 ## Original Requirement
 
@@ -327,6 +365,18 @@ ${checkBlock(byName("Assumptions Missing"))}
 
 ${requiredFixes.length ? requiredFixes.map((check) => `- ${check.name}: ${check.detail}`).join("\n") : "- None"}
 
+## Relevant Failure Patterns
+
+${recalledCases(caseRecall.failure_patterns)}
+
+## Relevant Success Patterns
+
+${recalledCases(caseRecall.success_patterns)}
+
+## Memory Evolution Proposal
+
+${memoryEvolutionProposal(verdict, requiredFixes)}
+
 ## Review Check Table
 
 | Check | Status | Detail |
@@ -357,6 +407,29 @@ function codexOutputSummary(output: string): string {
     .filter((line) => !line.startsWith("diff --git"))
     .slice(0, 8);
   return lines.length ? lines.map((line) => `- ${line.replace(/^\s*[-*]\s*/, "")}`).join("\n") : "- No summary text was provided.";
+}
+
+function recalledCases(items: RecalledCase[]): string {
+  if (items.length === 0) {
+    return "- None";
+  }
+  return items
+    .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
+    .join("\n");
+}
+
+function memoryEvolutionProposal(verdict: ReviewVerdict, requiredFixes: ReviewCheck[]): string {
+  if (verdict === "pass") {
+    return "- Proposal: record the verified pattern only if the user confirms it should become reusable CodeDNA memory.";
+  }
+  if (requiredFixes.length > 0) {
+    return [
+      "- Proposal: do not write long-term memory automatically.",
+      "- Ask the user whether the failed pattern should be saved as a rejected pattern after the repair is complete.",
+      "- If the user confirms, use the memory proposal and confirmation flow rather than silent writes."
+    ].join("\n");
+  }
+  return "- Proposal: keep this result as short-term review context unless the user confirms a durable preference.";
 }
 
 function artifactId(prefix: string, createdAt: string, label: string): string {

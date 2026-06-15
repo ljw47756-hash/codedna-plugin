@@ -9,8 +9,26 @@ description: Use when comparing Requirement and Analysis strands before deciding
 
 pairing-review
 
-## when_to_use
 
+## CodeDNA Core Chain
+
+Every CodeDNA skill belongs to this main chain:
+
+```text
+User Requirement Strand
+    <-> Bidirectional Pairing Review
+Reverse Analysis Strand
+    -> Codex Task Pack
+    -> Code Execution
+    -> Reverse Review
+    -> Memory Evolution
+```
+
+## Codex Assistance Rule
+
+CodeDNA does not replace Codex. The MCP tools produce structured strands, scores, guardrails, task packs, reports, and memory proposals. After each CodeDNA stage, Codex must use its own reasoning, coding, inspection, and verification capabilities to continue the work safely.
+
+## when_to_use
 Use after both Requirement Strand and Analysis Strand exist. This skill decides whether the task is ready for Codex, cautious, or blocked.
 
 ## when_not_to_use

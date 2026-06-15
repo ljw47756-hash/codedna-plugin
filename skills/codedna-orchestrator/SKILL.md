@@ -9,8 +9,26 @@ description: "Use when a coding request is complex enough to prepare through Cod
 
 codedna-orchestrator
 
-## when_to_use
 
+## CodeDNA Core Chain
+
+Every CodeDNA skill belongs to this main chain:
+
+```text
+User Requirement Strand
+    <-> Bidirectional Pairing Review
+Reverse Analysis Strand
+    -> Codex Task Pack
+    -> Code Execution
+    -> Reverse Review
+    -> Memory Evolution
+```
+
+## Codex Assistance Rule
+
+CodeDNA does not replace Codex. The MCP tools produce structured strands, scores, guardrails, task packs, reports, and memory proposals. After each CodeDNA stage, Codex must use its own reasoning, coding, inspection, and verification capabilities to continue the work safely.
+
+## when_to_use
 Use this skill when the user asks for a feature, bug fix, refactor, multi-file change, architecture change, test plan, review, or any request that would benefit from a structured Codex Task Pack before implementation. Also use it when the user explicitly says CodeDNA, task pack, requirement strand, analysis strand, pairing, or plugin workflow.
 
 ## when_not_to_use
