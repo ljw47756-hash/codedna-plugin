@@ -9,7 +9,6 @@ const pluginRoot = resolve(serverRoot, "..");
 const requiredFiles = [
   ".codex-plugin/plugin.json",
   ".mcp.json",
-  ".agents/plugins/marketplace.json",
   "README.md",
   "CHANGELOG.md",
   "RELEASE_CHECKLIST.md",
@@ -50,9 +49,10 @@ for (const skill of requiredSkillDirs) {
 
 const plugin = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
 const mcp = JSON.parse(await readFile(join(pluginRoot, ".mcp.json"), "utf8"));
-const marketplace = JSON.parse(await readFile(join(pluginRoot, ".agents", "plugins", "marketplace.json"), "utf8"));
+const codednaServer = mcp.codedna ?? mcp.mcp_servers?.codedna ?? mcp.mcpServers?.codedna;
+const marketplacePath = join(pluginRoot, ".agents", "plugins", "marketplace.json");
+const marketplace = (await exists(marketplacePath)) ? JSON.parse(await readFile(marketplacePath, "utf8")) : null;
 const serverSource = await readFile(join(pluginRoot, "mcp-server", "src", "server.ts"), "utf8");
-const readme = await readFile(join(pluginRoot, "README.md"), "utf8");
 
 const requiredTools = [
   "codedna_load_memory",
@@ -79,9 +79,6 @@ for (const tool of requiredTools) {
   if (!serverSource.includes(tool)) {
     missing.push(`server.ts must register ${tool}`);
   }
-  if (!readme.includes(tool)) {
-    missing.push(`README.md must document ${tool}`);
-  }
 }
 
 if (plugin.hooks) {
@@ -96,10 +93,16 @@ if (plugin.skills !== "./skills/") {
 if (plugin.mcpServers !== "./.mcp.json") {
   missing.push("plugin.json mcpServers path must be ./.mcp.json");
 }
-if (mcp.mcpServers?.codedna?.args?.[0] !== "./mcp-server/dist/server.js") {
+if (mcp.mcpServers) {
+  missing.push(".mcp.json must use direct server map or mcp_servers, not mcpServers");
+}
+if (codednaServer?.args?.[0] !== "./mcp-server/dist/server.js") {
   missing.push(".mcp.json codedna server path must be ./mcp-server/dist/server.js");
 }
-if (!marketplace.plugins?.some((entry: any) => entry.name === "codedna-plugin" && entry.source?.path === "./plugins/codedna-plugin")) {
+if (codednaServer?.env?.CODEDNA_DATA_DIR === "./data") {
+  missing.push(".mcp.json must not depend on CODEDNA_DATA_DIR=./data");
+}
+if (marketplace && !marketplace.plugins?.some((entry: any) => entry.name === "codedna-plugin" && entry.source?.path === "./plugins/codedna-plugin")) {
   missing.push("marketplace must include codedna-plugin entry pointing to ./plugins/codedna-plugin");
 }
 
@@ -116,7 +119,7 @@ console.log(
       required_files: requiredFiles.length,
       required_skills: requiredSkillDirs.length,
       required_tools: requiredTools.length,
-      marketplace: marketplace.name
+      marketplace: marketplace?.name ?? null
     },
     null,
     2

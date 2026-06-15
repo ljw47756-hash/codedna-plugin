@@ -58,7 +58,7 @@ export async function runCodeDnaMcpE2E(options: CodeDnaMcpE2EOptions = {}): Prom
   const exampleDir = resolve(options.exampleDir ?? join(pluginRoot, "examples", "full-workflow"));
   const projectPath = resolve(options.projectPath ?? pluginRoot);
   const mcpConfig = await readJson(join(pluginRoot, ".mcp.json"));
-  const serverConfig = mcpConfig.mcpServers?.codedna;
+  const serverConfig = readCodeDnaServerConfig(mcpConfig);
   ensure(serverConfig, "Missing codedna MCP server in .mcp.json.");
 
   const command = String(serverConfig.command);
@@ -216,6 +216,10 @@ async function callTool<T>(client: Client, name: string, args: Record<string, un
 
 async function readJson(path: string): Promise<any> {
   return JSON.parse(await readFile(path, "utf8"));
+}
+
+function readCodeDnaServerConfig(mcpConfig: any): any {
+  return mcpConfig?.codedna ?? mcpConfig?.mcp_servers?.codedna ?? mcpConfig?.mcpServers?.codedna;
 }
 
 async function assertFileExists(path: string): Promise<void> {

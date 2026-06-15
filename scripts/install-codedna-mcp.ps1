@@ -2,7 +2,7 @@ param(
   [string]$PluginRoot,
   [string]$DataDir,
   [string]$NodePath,
-  [string]$CodexPath,
+  [string]$ServerName = "codedna_local",
   [switch]$DryRun
 )
 
@@ -90,62 +90,57 @@ $resolvedNodePath = Resolve-CommandPath `
     "$env:LOCALAPPDATA\Programs\node-v22.15.0-win-x64\node.exe"
   )
 
-$codexFallbacks = @()
-if ($env:CODEX_CLI_PATH) {
-  $codexFallbacks += $env:CODEX_CLI_PATH
-}
-$codexBinRoot = Join-Path $env:LOCALAPPDATA "OpenAI\Codex\bin"
-if (Test-Path -LiteralPath $codexBinRoot -PathType Container) {
-  $codexFallbacks += Get-ChildItem -LiteralPath $codexBinRoot -Recurse -Filter "codex.exe" -File |
-    Sort-Object LastWriteTime -Descending |
-    Select-Object -ExpandProperty FullName
+$configPath = Join-Path $HOME ".codex\config.toml"
+if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+  throw "Codex config file not found: $configPath"
 }
 
-$resolvedCodexPath = Resolve-CommandPath `
-  -CommandName "codex" `
-  -ExplicitPath $CodexPath `
-  -Fallbacks $codexFallbacks
+function Convert-ToTomlPath {
+  param([string]$PathValue)
+  return "'" + $PathValue.Replace("'", "''") + "'"
+}
 
-$addArgs = @(
-  "mcp",
-  "add",
-  "codedna",
-  "--env",
-  "CODEDNA_DATA_DIR=$DataDir",
-  "--",
-  $resolvedNodePath,
-  $serverPath
-)
+$serverPattern = "^\[mcp_servers\.$([Regex]::Escape($ServerName))\]"
+$nodeToml = Convert-ToTomlPath $resolvedNodePath
+$serverToml = Convert-ToTomlPath $serverPath
+$rootToml = Convert-ToTomlPath $resolvedPluginRoot
+$dataToml = Convert-ToTomlPath $DataDir
+$configBlock = @"
+
+[mcp_servers.$ServerName]
+command = $nodeToml
+args = [$serverToml]
+cwd = $rootToml
+startup_timeout_sec = 120
+tool_timeout_sec = 120
+enabled = true
+default_tools_approval_mode = "prompt"
+
+[mcp_servers.$ServerName.env]
+CODEDNA_DATA_DIR = $dataToml
+"@
 
 Write-Output "CodeDNA MCP global registration"
 Write-Output "Plugin root: $resolvedPluginRoot"
 Write-Output "Server: $serverPath"
 Write-Output "Node: $resolvedNodePath"
-Write-Output "Codex CLI: $resolvedCodexPath"
 Write-Output "Data dir: $DataDir"
+Write-Output "Config: $configPath"
+Write-Output "Server name: $ServerName"
 
 if ($DryRun) {
-  Write-Output "Dry run only. Commands that would run:"
-  Write-Output "`"$resolvedCodexPath`" mcp remove codedna"
-  Write-Output "`"$resolvedCodexPath`" $($addArgs -join ' ')"
+  Write-Output "Dry run only. TOML block that would be appended if missing:"
+  Write-Output $configBlock
   exit 0
 }
 
-try {
-  & $resolvedCodexPath mcp remove codedna 2>$null | Out-Null
-}
-catch {
-  # It is safe to continue when the server was not registered before.
+Copy-Item -LiteralPath $configPath -Destination "$configPath.bak-codedna-$(Get-Date -Format yyyyMMdd-HHmmss)" -Force
+
+if (Select-String -Path $configPath -Pattern $serverPattern -Quiet) {
+  Write-Output "$ServerName already exists in config.toml; no duplicate block was written."
+} else {
+  Add-Content -Path $configPath -Value $configBlock -Encoding UTF8
+  Write-Output "$ServerName MCP config was written."
 }
 
-& $resolvedCodexPath @addArgs
-if ($LASTEXITCODE -ne 0) {
-  throw "Failed to register CodeDNA MCP with Codex CLI."
-}
-
-& $resolvedCodexPath mcp get codedna
-if ($LASTEXITCODE -ne 0) {
-  throw "CodeDNA MCP was added, but Codex CLI could not read it back."
-}
-
-Write-Output "CodeDNA MCP registered. Restart Codex App, then open Settings -> MCP Servers."
+Write-Output "Restart Codex App, then open Settings -> MCP Servers."

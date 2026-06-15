@@ -20,54 +20,28 @@ Git 引用: main
 稀疏路径: 留空
 ```
 
-安装后建议重启 Codex App，或者至少新开一个对话，让插件能力重新加载。
+安装后建议重启 Codex App，或者至少新开一个对话，让插件能力重新加载。正常安装不需要运行额外脚本，也不需要手动修改 `config.toml`。
 
-## 如果 MCP 没有自动启动
+## 内置 MCP
 
-有些版本的 Codex App 会先识别到 CodeDNA 的 Skills，但不会自动把插件里的 MCP server 提升为可用服务器。表现通常是：
-
-```text
-Settings -> MCP Servers 里只看到 node_repl
-codedna 只显示在“来自插件”区域
-聊天里无法稳定调用 CodeDNA MCP 工具
-```
-
-这种情况下不是插件代码坏了，而是需要把 CodeDNA MCP 注册到当前电脑的全局 MCP 配置里。仓库已经提供一键注册脚本。
-
-如果你已经 clone 了本仓库，在仓库根目录运行：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-codedna-mcp.ps1
-```
-
-如果你是通过 Codex App 的插件市场安装，没有单独 clone 仓库，可以在 PowerShell 里运行下面这段命令，它会从 Codex 插件缓存里找到已安装的 CodeDNA 包并注册 MCP：
-
-```powershell
-$plugin = Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache" -Recurse -Directory -Filter "codedna-plugin" |
-  Where-Object { Test-Path (Join-Path $_.FullName "scripts\install-codedna-mcp.ps1") } |
-  Sort-Object LastWriteTime -Descending |
-  Select-Object -First 1
-
-if (-not $plugin) {
-  throw "CodeDNA plugin cache was not found. Reinstall CodeDNA from the plugin marketplace, or clone the GitHub repository and run the root script."
-}
-
-powershell -ExecutionPolicy Bypass -File (Join-Path $plugin.FullName "scripts\install-codedna-mcp.ps1")
-```
-
-执行完成后，重启 Codex App，再进入：
+CodeDNA 插件内置 `codedna` MCP server。插件安装后，Codex 会从插件包里的 `.mcp.json` 读取 MCP 配置，并启动：
 
 ```text
-Settings -> MCP Servers
+node ./mcp-server/dist/server.js
 ```
 
-正常情况下应该能在服务器列表里看到 `codedna`，并且开关已打开。此时 CodeDNA 的 Skills 和 MCP 都已经可用。
+CodeDNA 会自动把运行数据保存到插件目录下的 `data/`。如果你显式设置了 `CODEDNA_DATA_DIR` 或 `PLUGIN_DATA`，则优先使用你设置的目录。
 
-如果只是想检查脚本会做什么，不实际修改配置，可以运行：
+## MCP 故障排查
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-codedna-mcp.ps1 -DryRun
-```
+如果安装后只看到 CodeDNA Skills，但 `Settings -> MCP Servers` 里没有可用的 `codedna`，请优先按下面顺序处理：
+
+1. 重启 Codex App。
+2. 确认本机 `node -v` 是 Node.js 20 或更新版本。
+3. 删除旧版 CodeDNA 插件后，从 `main` 重新安装。
+4. 确认安装的是 `0.1.4` 或更新版本。
+
+仓库里的 `scripts/install-codedna-mcp.ps1` 只作为开发调试或极端兜底使用，不是正常安装流程。正常用户从 GitHub / marketplace 安装后不应该需要运行这个脚本。
 
 ## 图片示例
 
@@ -99,7 +73,7 @@ Apps: 不显示
 - 本机没有安装 Node.js，或者 Node.js 版本太旧：安装 Node.js 20 或更新版本。
 - 安装到的是旧版本插件：删除旧安装后重新从 `main` 安装。
 - MCP 开关被关闭：进入 Settings -> MCP Servers，打开 `Codedna`。
-- 插件 MCP 没有自动提升为可用服务器：按上面的“一键注册脚本”注册全局 MCP。
+- 插件缓存仍然是旧版本：删除旧安装并重新安装最新 `main`。
 
 ## 什么时候适合使用 CodeDNA
 
@@ -193,7 +167,7 @@ C:\Users\<name>\.codex\plugins\cache\...
 
 CodeDNA 的 MCP server 以本地方式运行，不依赖外部 AI API。
 
-运行过程中产生的任务数据、审查数据和本地记忆数据会写入本地目录。具体位置取决于 Codex 的 MCP 配置和 `CODEDNA_DATA_DIR` 环境变量。
+运行过程中产生的任务数据、审查数据和本地记忆数据会写入本地目录。默认位置是插件包内的 `data/`，也可以通过 `CODEDNA_DATA_DIR` 或 `PLUGIN_DATA` 指定。
 
 请不要把本地运行数据、私有项目内容、密钥、token、个人路径或本地记忆文件提交到公开仓库。
 
@@ -227,6 +201,8 @@ Get-Content .\.codex-plugin\plugin.json | ConvertFrom-Json
 Get-Content .\.mcp.json | ConvertFrom-Json
 Test-Path .\mcp-server\dist\server.js
 ```
+
+下面的手动配置只用于开发调试或排查 Codex App 启动问题。正常安装不需要这一步。
 
 如果 Codex CLI 提示 `Access is denied`，可以手动编辑：
 

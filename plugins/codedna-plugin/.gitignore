@@ -5,7 +5,9 @@
 /data/tasks/
 /data/reviews/
 /data/strands/
-/mcp-server/dist/
+# Commit built MCP server files so GitHub plugin installs can start without local TypeScript compilation.
+!/mcp-server/dist/
+!/mcp-server/dist/**
 /mcp-server/.codedna-smoke/
 /mcp-server/.npm/
 

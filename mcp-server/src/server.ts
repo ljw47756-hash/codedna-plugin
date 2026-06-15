@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -23,7 +24,9 @@ import { confirmMemoryUpdate } from "./tools/confirmMemoryUpdate.js";
 import { generateTestPlan } from "./tools/generateTestPlan.js";
 import { scoreOutcome } from "./tools/scoreOutcome.js";
 
-const dataRoot = resolve(process.env.CODEDNA_DATA_DIR || "data");
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const pluginRoot = resolve(currentDir, "../..");
+const dataRoot = resolve(process.env.CODEDNA_DATA_DIR || process.env.PLUGIN_DATA || join(pluginRoot, "data"));
 const memoryStore = new MemoryStore(dataRoot);
 await memoryStore.ensureLayout();
 

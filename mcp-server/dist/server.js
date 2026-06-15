@@ -6890,7 +6890,8 @@ var require_dist = __commonJS({
 });
 
 // src/server.ts
-import { resolve as resolve4 } from "node:path";
+import { dirname as dirname3, join as join4, resolve as resolve4 } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // node_modules/zod/v4/core/core.js
 var _a;
@@ -19063,7 +19064,9 @@ function clampScore(value) {
 }
 
 // src/server.ts
-var dataRoot = resolve4(process.env.CODEDNA_DATA_DIR || "data");
+var currentDir = dirname3(fileURLToPath(import.meta.url));
+var pluginRoot = resolve4(currentDir, "../..");
+var dataRoot = resolve4(process.env.CODEDNA_DATA_DIR || process.env.PLUGIN_DATA || join4(pluginRoot, "data"));
 var memoryStore = new MemoryStore(dataRoot);
 await memoryStore.ensureLayout();
 var server = new Server(
