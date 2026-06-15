@@ -1,13 +1,12 @@
 {
-  "mcpServers": {
-    "codedna": {
-      "command": "node",
-      "args": [
-        "./mcp-server/dist/server.js"
-      ],
-      "env": {
-        "CODEDNA_DATA_DIR": "./data"
-      }
-    }
+  "codedna": {
+    "command": "node",
+    "args": [
+      "./mcp-server/dist/server.js"
+    ],
+    "env": {
+      "CODEDNA_DATA_DIR": "./data"
+    },
+    "startup_timeout_sec": 30
   }
 }
