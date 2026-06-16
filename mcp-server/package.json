@@ -12,6 +12,7 @@
     "smoke": "tsx scripts/e2e.ts",
     "smoke:tools": "tsx test/manualSmoke.ts",
     "validate:real-project": "tsx scripts/realProjectWorkflow.ts",
+    "benchmark:evolve": "tsx scripts/benchmarkEvolve.ts",
     "release:check": "tsx scripts/releaseCheck.ts",
     "test": "node --import tsx --test test/**/*.test.ts",
     "start": "node dist/server.js",

@@ -282,3 +282,52 @@ npm test
 ```powershell
 Test-Path .\dist\server.js
 ```
+
+## CodeDNA 自测进化
+
+CodeDNA 现在包含一套面向自身工作流的 benchmark evolution 流程，用来检查它是否仍然围绕主链路运转：
+
+```text
+用户需求链
+    <-> 配对审查
+反向解析链
+    -> Codex 任务包
+    -> 代码执行
+    -> 反向审查
+    -> 记忆进化
+```
+
+开发者可以在 MCP server 目录运行：
+
+```powershell
+cd mcp-server
+npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --dry-run
+```
+
+正式记录本地进化数据并生成公开脱敏报告：
+
+```powershell
+npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --seed=20260616
+```
+
+本次公开版本的 benchmark 结果：
+
+- 测试轮次：1
+- 每轮案例：100
+- 最终准确率：95%
+- 发布阈值：95%
+- 公开报告：`docs/BENCHMARK_REPORT.md`
+- 进化记录：`docs/EVOLUTION_LOG.md`
+
+完整失败案例、成功模式和 repair plan 只写入本地 `data/memory/evolution/`，不会提交到 GitHub。
+
+## 建议调用规则
+
+CodeDNA 更适合这些任务：
+
+- 多文件改动、复杂功能、重构、修复链路较长的 bug。
+- 需要先明确边界、验收标准、禁止修改范围的任务。
+- Codex 已经生成结果，需要反向审查 diff、风险和测试缺口的任务。
+- 需要把经验沉淀到本地 memory，但仍然要求用户确认长期记忆的任务。
+
+不建议为一句话解释、简单翻译、极小文案修改强制启用完整流程。对于这类小任务，直接让 Codex 处理即可。

@@ -2,6 +2,7 @@ import { nowIso, timestampedName } from "../storage/jsonStore.js";
 import { inferEffectFamilies, loadCaseLibrary, recallCases } from "../caseLibrary/caseLibrary.js";
 import { activateEffects, basePairWeights, codexAssistanceSteps, dnaAlignment, ruleWeightAdjustments, scoreAdjustmentFromEffects, scoreExplanation } from "../caseLibrary/effectWeights.js";
 import { similarity, tokens, uniqueStrings } from "./common.js";
+import { evaluateVagueRequest, vagueClarificationQuestions } from "./vagueRequest.js";
 const pairWeights = basePairWeights;
 export async function pairStrands(input, memoryStore) {
     const requirement = input.requirement_strand;
@@ -24,15 +25,24 @@ export async function pairStrands(input, memoryStore) {
     const activatedEffects = activateEffects(library, query, inferredFamilies);
     const caseRecall = recallCases(library, query, inferredFamilies);
     const evidenceAdjustment = scoreAdjustmentFromEffects(activatedEffects, requirement.unknowns.length, unmatched.length);
-    const pairingScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
+    const adjustedScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
+    const vagueGate = evaluateVagueRequest(requirement, analysis);
+    const safetyGate = evaluateSafetyGate(requirement);
+    const pairingScore = applyScoreCaps(adjustedScore, requirement, analysis, vagueGate.is_vague, safetyGate);
+    const blocked = vagueGate.is_vague || safetyGate.blocked || pairingScore < 70;
     const result = {
         pairing_score: pairingScore,
         matched_pairs: matched,
         unmatched_pairs: unmatched,
-        warnings: uniqueStrings([...warnings(pairingScore, unmatched, requirement.unknowns), ...library.warnings]),
-        missing_information: requirement.unknowns,
-        ready_for_codex: pairingScore >= 70,
-        execution_level: pairingScore >= 90 ? "full" : pairingScore >= 70 ? "cautious" : "blocked",
+        warnings: uniqueStrings([
+            ...warnings(pairingScore, unmatched, requirement.unknowns, vagueGate.is_vague),
+            ...vagueGate.warnings,
+            ...safetyGate.warnings,
+            ...library.warnings
+        ]),
+        missing_information: uniqueStrings([...requirement.unknowns, ...(vagueGate.is_vague ? vagueClarificationQuestions : [])]),
+        ready_for_codex: !blocked,
+        execution_level: blocked ? "blocked" : pairingScore >= 90 ? "full" : "cautious",
         dna_alignment: dnaAlignment(pairingScore),
         activated_effects: activatedEffects,
         case_recall: caseRecall,
@@ -303,9 +313,63 @@ function applyEvidenceAdjustment(baseScore, adjustment, unknownCount) {
     }
     return adjusted;
 }
-function warnings(scoreValue, unmatched, missing) {
+function applyScoreCaps(scoreValue, requirement, analysis, vagueRequest, safetyGate) {
+    let value = scoreValue;
+    if (vagueRequest) {
+        value = Math.min(value, 60);
+    }
+    if (safetyGate.blocked) {
+        value = Math.min(value, 69);
+    }
+    else if (safetyGate.cautious) {
+        value = Math.min(value, 89);
+    }
+    if (requirement.acceptance_criteria.length === 0) {
+        value -= 15;
+    }
+    if (analysis.affected_files.length === 0 || analysis.affected_files.some((file) => /inspect project structure|scan the target project/i.test(file))) {
+        value -= 15;
+    }
+    if (requirement.constraints.length === 0) {
+        value -= 10;
+    }
+    return Math.max(0, Math.min(100, Math.round(value)));
+}
+function evaluateSafetyGate(requirement) {
+    const request = requirement.original_request;
+    const lowered = request.toLowerCase();
+    const protectiveMention = /assert(?:ing)?\s+\.env\s+is\s+forbidden|\.env\s+is\s+forbidden|unless explicitly requested/i.test(request) ||
+        /(security review|review for hardcoded secrets|report risks|do not change files|do not edit files|只报告|不要改 files|不改 files)/i.test(request);
+    const asksForSecret = /(hardcoded|add|write|store|commit|put|save).{0,40}(api key|token|secret|password|\.env)/i.test(request) ||
+        /(api key|token|secret|password).{0,40}(\.env|hardcoded|commit|store|save)/i.test(request) ||
+        /密钥|令牌|硬编码/u.test(request);
+    const dangerousCommand = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc|删除核心配置|直接执行/u.test(request);
+    const destructiveConfig = /\b(delete|remove|wipe|reset|overwrite|format)\b/i.test(request) &&
+        /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config)/i.test(request);
+    const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+    const planOnlyOrApproval = /\b(do not edit files yet|wait for approval|before editing|do not apply it until|plan a .*change|only prepare|do not modify production code)\b/i.test(request) || /先不要改文件|只生成任务包|只准备修复方案|不要继续新增功能|等待.*确认/u.test(request);
+    if (!protectiveMention && (asksForSecret || dangerousCommand || destructiveConfig || deceptiveOrNoReview)) {
+        return {
+            blocked: true,
+            cautious: false,
+            warnings: ["High-risk request detected; block direct execution and require clarification or explicit safe scope."]
+        };
+    }
+    if (planOnlyOrApproval || (!protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered))) {
+        return {
+            blocked: false,
+            cautious: true,
+            warnings: ["Cautious execution gate applied because the request requires approval, planning first, or sensitive-file guardrails."]
+        };
+    }
+    return { blocked: false, cautious: false, warnings: [] };
+}
+function warnings(scoreValue, unmatched, missing, vagueRequest) {
     const items = [];
-    if (scoreValue >= 90) {
+    if (vagueRequest) {
+        items.push("Vague request blocked; ask clarification questions before generating an editing task pack.");
+    }
+    else if (scoreValue >= 90) {
         items.push("Pairing score is high enough for a complete Codex Task Pack.");
     }
     else if (scoreValue >= 70) {

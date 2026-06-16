@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.9+codex.20260616014600 - Self-Benchmark Evolution
+
+- Added the CodeDNA self-benchmark evolution loop.
+- Added deterministic 100-case benchmark generation with blocked, cautious, full, and edge cases.
+- Added automatic scoring, failure diagnosis, local memory evolution persistence, and sanitized public reports.
+- Improved vague request blocking for broad Chinese and English improvement requests.
+- Improved pairing score calibration for plan-first, approval-gated, and high-risk requests.
+- Improved guardrail and execution gate accuracy for security-sensitive requests.
+- Final benchmark accuracy: 95%.
+- Benchmark rounds: 1.
+
 ## 0.1.0+codex.20260614062925
 
 - Added `codedna_run_full_workflow` for one-command planning, scanning, pairing, and gated task-pack generation.

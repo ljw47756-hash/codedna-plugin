@@ -12,6 +12,7 @@ import { pairStrands } from "./pairStrands.js";
 import { parseRequirement } from "./parseRequirement.js";
 import { reverseAnalyze } from "./reverseAnalyze.js";
 import { scanProject } from "./scanProject.js";
+import { evaluateVagueRequest, vagueClarificationQuestions } from "./vagueRequest.js";
 
 export type FullWorkflowMode = "plan_only" | "task_pack" | "full";
 
@@ -98,7 +99,7 @@ export async function runFullWorkflow(
   warnings.push(...highRisk.warnings);
 
   let taskPackPath: string | undefined;
-  if (mode !== "plan_only" && pairingResult.pairing_score >= 70 && pairingResult.ready_for_codex) {
+  if (mode !== "plan_only" && pairingResult.pairing_score >= 70 && pairingResult.ready_for_codex && pairingResult.execution_level !== "blocked") {
     const pack = await generateTaskPack(
       {
         requirement_strand: parsed.requirement_strand,
@@ -119,7 +120,7 @@ export async function runFullWorkflow(
     project_genome: projectGenome,
     task_pack_path: taskPackPath,
     next_action: nextAction(pairingResult, mode),
-    clarification_questions: clarificationQuestions(pairingResult, warnings),
+    clarification_questions: clarificationQuestions(pairingResult, warnings, parsed.requirement_strand, analysis.analysis_strand),
     warnings: uniqueStrings(warnings)
   };
 }
@@ -145,12 +146,24 @@ async function assertDirectory(path: string): Promise<void> {
 
 function highRiskRequest(request: string): { severity: "none" | "cautious" | "blocked"; warnings: string[] } {
   const lowered = request.toLowerCase();
-  const sensitive = /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config|pyproject\.toml)/i.test(request);
-  const destructive = /\b(delete|remove|wipe|drop|destroy|reset|overwrite|format)\b/i.test(request);
-  if (destructive && sensitive) {
+  const protectiveMention =
+    /assert(?:ing)?\s+\.env\s+is\s+forbidden|\.env\s+is\s+forbidden|unless explicitly requested/i.test(request) ||
+    /(security review|review for hardcoded secrets|report risks|do not change files|do not edit files|只报告|不要改 files|不改 files)/i.test(
+      request
+    );
+  const sensitive = !protectiveMention && /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config|pyproject\.toml)/i.test(request);
+  const destructive = /\b(delete|remove|wipe|drop|destroy|reset|overwrite|format)\b|删除核心配置|直接执行/iu.test(request);
+  const secretWrite =
+    !protectiveMention &&
+    (/(hardcoded|add|write|store|commit|put|save).{0,40}(api key|token|secret|password|\.env)/i.test(request) ||
+      /(api key|token|secret|password).{0,40}(\.env|hardcoded|commit|store|save)/i.test(request) ||
+      /密钥|令牌|硬编码/u.test(request));
+  const dangerousCommand = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc/i.test(request);
+  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+  if ((destructive && sensitive) || secretWrite || dangerousCommand || deceptiveOrNoReview) {
     return {
       severity: "blocked",
-      warnings: ["High-risk destructive request targets configuration, environment, or package-management files."]
+      warnings: ["High-risk request targets secrets, dangerous commands, verification bypass, or protected configuration files."]
     };
   }
   if (sensitive || /core file|environment variable|dependency lock|package manager/i.test(lowered)) {
@@ -163,6 +176,9 @@ function highRiskRequest(request: string): { severity: "none" | "cautious" | "bl
 }
 
 function adjustedPairing(pairing: PairingResult, risk: { severity: "none" | "cautious" | "blocked"; warnings: string[] }): PairingResult {
+  if (pairing.execution_level === "blocked" || !pairing.ready_for_codex) {
+    return pairing;
+  }
   if (risk.severity === "blocked") {
     return {
       ...pairing,
@@ -197,7 +213,14 @@ function nextAction(pairing: PairingResult, mode: FullWorkflowMode): string {
   return "Generate guardrails and execute cautiously with explicit risk and assumption notes.";
 }
 
-function clarificationQuestions(pairing: PairingResult, warnings: string[]): string[] {
+function clarificationQuestions(pairing: PairingResult, warnings: string[], requirement: RequirementStrand, analysis: AnalysisStrand): string[] {
+  const vagueGate = evaluateVagueRequest(requirement, analysis);
+  if (vagueGate.is_vague || pairing.execution_level === "blocked") {
+    return uniqueStrings([
+      ...vagueClarificationQuestions,
+      ...pairing.missing_information.filter((item) => !vagueClarificationQuestions.includes(item))
+    ]);
+  }
   if (pairing.pairing_score >= 70) {
     return [];
   }

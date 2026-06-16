@@ -2,10 +2,11 @@ import { sanitizeFilename, timestampedName } from "../storage/jsonStore.js";
 import { uniqueStrings } from "./common.js";
 export async function generateTaskPack(input, memoryStore) {
     const taskId = artifactId("codedna-task", input.requirement_strand.created_at, input.requirement_strand.core_goal);
+    const blocked = isBlocked(input.pairing_result);
     const markdown = renderTaskPack(input, taskId);
     let artifactPath;
     if (input.save !== false) {
-        artifactPath = await memoryStore.saveMarkdown(`tasks/${timestampedName(input.requirement_strand.core_goal, ".codex_task.md")}`, markdown);
+        artifactPath = await memoryStore.saveMarkdown(`tasks/${timestampedName(input.requirement_strand.core_goal, blocked ? ".clarification.md" : ".codex_task.md")}`, markdown);
     }
     return {
         codex_task_pack: {
@@ -25,7 +26,7 @@ function renderTaskPack(input, taskId) {
     const requirement = input.requirement_strand;
     const analysis = input.analysis_strand;
     const pairing = input.pairing_result;
-    return `# Codex Task Pack
+    return `# ${isBlocked(pairing) ? "CodeDNA Clarification Pack" : "Codex Task Pack"}
 
 Task ID: ${taskId}
 
@@ -35,7 +36,7 @@ Task ID: ${taskId}
 - Execution Level: ${pairing.execution_level}
 - Ready for Codex: ${pairing.ready_for_codex ? "yes" : "no"}
 - Gate note: ${statusNote(pairing)}
-${pairing.pairing_score < 70 ? "\n**Do not execute this task directly. Clarify the missing information before asking Codex to edit files.**\n" : ""}
+${isBlocked(pairing) ? "\n**Do not execute this task directly. Clarify the missing information before asking Codex to edit files.**\n" : ""}
 
 ## CodeDNA Core Chain
 
@@ -178,6 +179,9 @@ Risks / Follow-ups:
 `;
 }
 function statusNote(pairing) {
+    if (isBlocked(pairing)) {
+        return "Direct execution is blocked. Ask clarification questions before generating an editing task pack.";
+    }
     if (pairing.pairing_score >= 90) {
         return "Generate and execute the task pack normally.";
     }
@@ -185,6 +189,9 @@ function statusNote(pairing) {
         return "Generate the task pack with assumptions and risk notes attached.";
     }
     return "Direct execution is blocked. Use this pack to gather missing information before implementation.";
+}
+function isBlocked(pairing) {
+    return pairing.execution_level === "blocked" || !pairing.ready_for_codex || pairing.pairing_score < 70;
 }
 function projectContext(projectProfile) {
     if (!projectProfile) {

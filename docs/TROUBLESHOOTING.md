@@ -103,6 +103,20 @@ Current validation rejects unsupported manifest fields such as `hooks`. CodeDNA 
 
 CodeDNA intentionally blocks direct execution when information is missing. Review `missing_information` in the Pairing Result or Task Pack, answer the missing questions, then rerun the workflow.
 
+## Self-Benchmark Does Not Reach 95%
+
+Cause: the generated benchmark found a mismatch in vague-request blocking, cautious/full score calibration, edge-case security handling, guardrails, test planning, or task-pack gating.
+
+Fix:
+
+- Inspect the local report under `data/memory/evolution/benchmark-latest-failed.json`.
+- Review failed-case records under `data/memory/evolution/failure-patterns/`.
+- Add or update a focused regression test before changing core logic.
+- Only repair allowed areas such as vague request detection, pairing score calculation, execution gate, clarification questions, guardrails, task pack gating, review safety, or memory proposal classification.
+- Rerun `npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --dry-run`.
+
+Do not lower the threshold, hardcode case IDs, or make every task the same execution level.
+
 ## Review Report Says Blocked
 
 `blocked` means high-risk output was detected, such as forbidden file edits, important file deletion, dangerous commands, plaintext API keys, or serious constraint violations. Use the generated repair prompt instead of accepting the result.

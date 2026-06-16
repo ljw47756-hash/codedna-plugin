@@ -163,6 +163,28 @@ Generate a task-type test plan:
 }
 ```
 
+## Self-Benchmark Evolution
+
+Use this flow before publishing a CodeDNA update:
+
+```powershell
+cd C:\path\to\codedna-plugin\mcp-server
+npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --dry-run
+```
+
+If the dry run passes, write local evolution memory and refresh the public sanitized reports:
+
+```powershell
+npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --seed=20260616
+```
+
+Expected result:
+
+- Overall accuracy is at least 95%.
+- The workflow still follows Requirement Strand -> Pairing Review -> Analysis Strand -> Codex Task Pack -> Reverse Review -> Memory Evolution.
+- Full run details stay local under `data/memory/evolution/`.
+- Public summaries are written to `docs/BENCHMARK_REPORT.md` and `docs/EVOLUTION_LOG.md`.
+
 Score the finished work:
 
 ```json

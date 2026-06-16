@@ -1,6 +1,7 @@
 import { nowIso, timestampedName } from "../storage/jsonStore.js";
 import { classifyClause, detectTaskMode, extractCorrections, isPhasedInstruction, isPrivacyInstruction, taskModeNote, zhAcceptanceHints, zhConstraintHints, zhFeatureHints, zhPreferenceHints } from "../language/zhLexicon.js";
 import { containsAny, normalizeText, splitClauses, splitSentences, uniqueStrings } from "./common.js";
+import { isGenericImprovementFeature, isGenericImprovementText, isMetaWorkflowInstruction, vagueClarificationQuestions } from "./vagueRequest.js";
 const featureHints = [
     "add",
     "bump",
@@ -208,19 +209,24 @@ export async function parseRequirement(input, memoryStore) {
     }
     const sentences = splitSentences(request);
     const coreGoal = coreGoalFromSentences(sentences);
-    const features = extractByHints(sentences, featureHints, true);
+    let features = extractByHints(sentences, featureHints, true);
     const constraints = extractByHints(sentences, constraintHints);
     const preferences = extractByHints(sentences, preferenceHints);
     let acceptanceCriteria = extractByHints(sentences, acceptanceHints);
     enrichWithClauseClassification(sentences, features, constraints, preferences, acceptanceCriteria);
     enrichWithStructuredDirectives(request, features, constraints, preferences, acceptanceCriteria);
+    const vagueRequest = isGenericImprovementText(request) || isGenericImprovementText(coreGoal);
+    if (vagueRequest) {
+        features = features.filter((feature) => !isGenericImprovementFeature(feature) && !isMetaWorkflowInstruction(feature));
+        acceptanceCriteria = acceptanceCriteria.filter((criterion) => !isMetaWorkflowInstruction(criterion));
+    }
     const memoryRules = input.memory_rules?.length
         ? uniqueStrings(input.memory_rules)
         : await memoryStore.relatedRules(request);
-    if (coreGoal && !features.includes(coreGoal)) {
+    if (coreGoal && !features.includes(coreGoal) && !vagueRequest) {
         features.unshift(coreGoal);
     }
-    if (acceptanceCriteria.length === 0) {
+    if (acceptanceCriteria.length === 0 && !vagueRequest) {
         acceptanceCriteria = defaultAcceptance(features, constraints);
     }
     const taskMode = detectTaskMode(request);
@@ -232,7 +238,7 @@ export async function parseRequirement(input, memoryStore) {
         constraints: uniqueStrings(constraints),
         preferences: uniqueStrings(preferences),
         acceptance_criteria: uniqueStrings(acceptanceCriteria),
-        unknowns: unknowns(request, input.project_profile, features, taskMode),
+        unknowns: unknowns(request, input.project_profile, features, taskMode, vagueRequest),
         priority: priority(request, constraints),
         user_memory_related_rules: memoryRules,
         created_at: nowIso()
@@ -251,6 +257,10 @@ export async function parseRequirement(input, memoryStore) {
 function coreGoalFromSentences(sentences) {
     if (sentences.length === 0) {
         return "Clarify and implement the requested Codex coding task";
+    }
+    const vagueSentence = sentences.find((sentence) => isGenericImprovementText(sentence));
+    if (vagueSentence) {
+        return cleanGoal(vagueSentence).slice(0, 240);
     }
     const scored = sentences
         .map((sentence, index) => ({ sentence, index, score: goalScore(sentence, index) }))
@@ -317,9 +327,15 @@ function enrichWithStructuredDirectives(request, features, constraints, preferen
         constraints.push("Do not disclose detailed internal capability design or implementation-sensitive workflow details.");
         preferences.push("Public-facing documentation should describe benefits without exposing proprietary implementation details.");
     }
+    if (/\bbefore\s+(?:implementation|edit|editing|code changes?)\b/iu.test(request)) {
+        constraints.push("Generate planning or task-pack artifacts before implementation.");
+    }
 }
-function unknowns(request, projectProfile, features, taskMode) {
+function unknowns(request, projectProfile, features, taskMode, vagueRequest) {
     const missing = [];
+    if (vagueRequest) {
+        missing.push(...vagueClarificationQuestions);
+    }
     if (!projectProfile) {
         missing.push("Target project directory has not been scanned yet.");
     }

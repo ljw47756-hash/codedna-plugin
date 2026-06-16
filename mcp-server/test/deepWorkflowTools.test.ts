@@ -108,6 +108,81 @@ test("codedna_run_full_workflow generates a ready workflow and blocks vague exec
   });
 });
 
+test("vague improvement requests are blocked before task pack execution", async () => {
+  await withWorkspace(async (workspace, memory) => {
+    const projectPath = await createNextProject(workspace);
+    const vagueRequests = [
+      "Make the project better.",
+      "Improve this project.",
+      "Refactor everything.",
+      "Optimize the code."
+    ];
+
+    for (const userRequest of vagueRequests) {
+      const workflow = await runFullWorkflow(
+        {
+          user_request: userRequest,
+          project_path: projectPath,
+          mode: "task_pack",
+          use_project_genome: true,
+          use_memory: false
+        },
+        memory
+      );
+
+      assert.ok(workflow.pairing_result.pairing_score < 70, `${userRequest} should score below execution threshold.`);
+      assert.equal(workflow.pairing_result.execution_level, "blocked", `${userRequest} should be blocked.`);
+      assert.equal(workflow.pairing_result.ready_for_codex, false, `${userRequest} should not be ready for Codex.`);
+      assert.equal(workflow.task_pack_path, undefined, `${userRequest} should not generate an editing task pack.`);
+      assert.ok(workflow.clarification_questions.length >= 5, `${userRequest} should ask clarification questions.`);
+      assert.ok(
+        workflow.clarification_questions.some((question) => /specific area should be improved/i.test(question)),
+        `${userRequest} should ask for the improvement area.`
+      );
+    }
+
+    const metaWorkflowRequest = await runFullWorkflow(
+      {
+        user_request: [
+          "Make the project better.",
+          "",
+          "Requirements:",
+          "1. Actually call the CodeDNA MCP tool `codedna_run_full_workflow`.",
+          "2. Generate Requirement Strand, Analysis Strand, and Pairing Result.",
+          "3. Because this request is vague, CodeDNA should not allow direct execution.",
+          "4. Generate clarification questions instead of a task pack for editing."
+        ].join("\n"),
+        project_path: projectPath,
+        mode: "task_pack",
+        use_project_genome: true,
+        use_memory: false
+      },
+      memory
+    );
+
+    assert.match(metaWorkflowRequest.requirement_strand.core_goal, /Make the project better/);
+    assert.ok(metaWorkflowRequest.pairing_result.pairing_score < 70);
+    assert.equal(metaWorkflowRequest.pairing_result.execution_level, "blocked");
+    assert.equal(metaWorkflowRequest.pairing_result.ready_for_codex, false);
+    assert.equal(metaWorkflowRequest.task_pack_path, undefined);
+    assert.ok(metaWorkflowRequest.clarification_questions.length >= 5);
+
+    const specific = await runFullWorkflow(
+      {
+        user_request: "Update README.md quick start section only.",
+        project_path: projectPath,
+        mode: "plan_only",
+        use_project_genome: true,
+        use_memory: false
+      },
+      memory
+    );
+
+    assert.notEqual(specific.pairing_result.execution_level, "blocked");
+    assert.equal(specific.pairing_result.ready_for_codex, true);
+  });
+});
+
 test("codedna_build_project_genome creates and incrementally updates the project genome", async () => {
   await withWorkspace(async (workspace, memory) => {
     const projectPath = await createNextProject(workspace);

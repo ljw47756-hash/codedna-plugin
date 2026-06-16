@@ -8,6 +8,8 @@ Use this checklist before sharing or packaging CodeDNA.
 - [ ] Run `npm run build` from `C:\path\to\codedna-plugin\mcp-server`.
 - [ ] Run `npm run smoke` from `C:\path\to\codedna-plugin\mcp-server`.
 - [ ] Run `npm run validate:real-project` from `C:\path\to\codedna-plugin\mcp-server`.
+- [ ] Run `npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --dry-run`.
+- [ ] For release, run `npm run benchmark:evolve -- --rounds=1 --cases=100 --threshold=95 --seed=20260616`.
 - [ ] Run the plugin validator against `C:\path\to\codedna-plugin`.
 - [ ] Run an English scan outside `node_modules`, `dist`, and `data`.
 - [ ] Run a wrong-direction file scan for non-plugin app leftovers.
@@ -34,6 +36,9 @@ Use this checklist before sharing or packaging CodeDNA.
 - [ ] Diff Review, Guardrails, Repair Chain, Test Plan, and Outcome Score are documented.
 - [ ] Guardrails forbid environment, package-manager, and build-config files by default unless explicitly requested.
 - [ ] Long-term user memory requires explicit remember language or confirmation.
+- [ ] Self-benchmark accuracy is at least 95%.
+- [ ] Public benchmark docs are sanitized and contain no local user paths.
+- [ ] Full benchmark memory remains under ignored `data/memory/evolution/`.
 
 ## Codex App Validation
 

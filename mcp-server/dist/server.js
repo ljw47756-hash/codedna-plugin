@@ -16276,6 +16276,120 @@ function cleanDirective(value) {
   return value.trim().replace(/^继续|^再|^要/u, "").trim();
 }
 
+// src/tools/vagueRequest.ts
+var vagueClarificationQuestions = [
+  "What specific area should be improved?",
+  "Which files, modules, or features are in scope?",
+  "What should not be changed?",
+  "What acceptance criteria should determine success?",
+  "Should this be documentation, UI, performance, testing, refactor, bug fix, or architecture work?"
+];
+var genericImprovementPatterns = [
+  /\bmake\s+(?:the\s+|this\s+)?project\s+better\b/i,
+  /\bimprove\s+this\s+project\b/i,
+  /\boptimi[sz]e\s+(?:the\s+)?code\b/i,
+  /\brefactor\s+(?:this\s+project|everything)\b/i,
+  /\bmake\s+it\s+cleaner\b/i,
+  /\bfix\s+everything\b/i,
+  /\bmake\s+it\s+production\s+ready\b/i,
+  /\bimprove\s+performance\b/i,
+  /\bmake\s+the\s+ui\s+better\b/i,
+  /随便你发挥/u,
+  /把项目做好/u,
+  /修复所有问题/u,
+  /优化整个项目/u,
+  /重构所有代码/u,
+  /把界面做好看一点/u
+];
+var metaInstructionPatterns = [
+  /\bcodedna_run_full_workflow\b/i,
+  /\brequirement\s+strand\b/i,
+  /\banalysis\s+strand\b/i,
+  /\bpairing\s+result\b/i,
+  /\btask\s+pack\b/i,
+  /\bartifact\s+paths?\b/i,
+  /\bready_for_codex\b/i,
+  /\bexecution_level\b/i,
+  /\bpairing_score\b/i
+];
+function isGenericImprovementText(value) {
+  return genericImprovementPatterns.some((pattern) => pattern.test(value));
+}
+function isMetaWorkflowInstruction(value) {
+  return metaInstructionPatterns.some((pattern) => pattern.test(value));
+}
+function isGenericImprovementFeature(value) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return true;
+  }
+  return isGenericImprovementText(normalized) || /^(improve|optimi[sz]e|refactor|fix|clean up|make better)\b/i.test(normalized) || /^(优化|重构|修复).*(整个|所有|全部|项目)/u.test(normalized);
+}
+function evaluateVagueRequest(requirement, analysis) {
+  const request = requirement.original_request;
+  const genericGoal = isGenericImprovementText(request) || isGenericImprovementText(requirement.core_goal);
+  const categories = {
+    concrete_goal: hasConcreteGoal(requirement),
+    scope: hasConcreteScope(requirement, analysis),
+    acceptance: hasExplicitAcceptance(request, requirement),
+    constraints: hasExplicitConstraints(requirement),
+    tests: hasTestMethod(request),
+    problem: hasProblemEvidence(request)
+  };
+  const evidenceCount = Object.values(categories).filter(Boolean).length;
+  const missingCategories = Object.entries(categories).filter(([, present]) => !present).map(([name]) => name);
+  const onlyGenericFeatures = requirement.features.length === 0 || requirement.features.every((feature) => isGenericImprovementFeature(feature) || isMetaWorkflowInstruction(feature));
+  const isVague = genericGoal && (evidenceCount < 2 || onlyGenericFeatures);
+  return {
+    is_vague: isVague,
+    evidence_count: evidenceCount,
+    missing_categories: missingCategories,
+    clarification_questions: isVague ? vagueClarificationQuestions : [],
+    warnings: isVague ? [
+      "Vague improvement request detected; direct execution is blocked until the user clarifies goal, scope, constraints, acceptance criteria, and work type."
+    ] : []
+  };
+}
+function hasConcreteGoal(requirement) {
+  const nonGenericFeatures = requirement.features.filter(
+    (feature) => !isGenericImprovementFeature(feature) && !isMetaWorkflowInstruction(feature)
+  );
+  if (nonGenericFeatures.length > 0) {
+    return true;
+  }
+  return !isGenericImprovementText(requirement.core_goal) && !isMetaWorkflowInstruction(requirement.core_goal);
+}
+function hasConcreteScope(requirement, analysis) {
+  const text = `${requirement.original_request}
+${requirement.core_goal}
+${requirement.features.join("\n")}`;
+  const requestScope = /\b(?:readme|docs?|[\w.-]+\.(?:ts|tsx|js|jsx|json|md|css|py|yml|yaml)|src[\\/]|mcp-server[\\/]|component|route|api|module|file|directory|quick start|login|checkout|dashboard)\b/i.test(
+    text
+  );
+  if (requestScope) {
+    return true;
+  }
+  const affected = analysis?.affected_files ?? [];
+  return affected.length > 0 && !affected.some((file) => /inspect project structure|scan the target project/i.test(file));
+}
+function hasExplicitAcceptance(request, requirement) {
+  if (/\b(?:acceptance|criteria|expected|verify|verification|test|passes?|should|must be able|done when|success)\b/i.test(request)) {
+    return true;
+  }
+  return requirement.acceptance_criteria.some((criterion) => !/^Implemented behavior matches|^Each requested feature|^All listed constraints|^Relevant verification/i.test(criterion));
+}
+function hasExplicitConstraints(requirement) {
+  return requirement.constraints.length > 0;
+}
+function hasTestMethod(request) {
+  return /\b(?:npm\s+(?:test|run\s+\w+)|pytest|vitest|jest|lint|build|smoke|release:check|manual check|verification)\b/i.test(request);
+}
+function hasProblemEvidence(request) {
+  return /\b(?:error|failure|failing|bug|regression|stack trace|log|exception|crash|timeout|slow|latency|memory leak|reproduce)\b/i.test(
+    request
+  );
+}
+
 // src/tools/parseRequirement.ts
 var featureHints = [
   "add",
@@ -16484,17 +16598,22 @@ async function parseRequirement(input, memoryStore2) {
   }
   const sentences = splitSentences(request);
   const coreGoal = coreGoalFromSentences(sentences);
-  const features = extractByHints(sentences, featureHints, true);
+  let features = extractByHints(sentences, featureHints, true);
   const constraints = extractByHints(sentences, constraintHints);
   const preferences = extractByHints(sentences, preferenceHints);
   let acceptanceCriteria = extractByHints(sentences, acceptanceHints);
   enrichWithClauseClassification(sentences, features, constraints, preferences, acceptanceCriteria);
   enrichWithStructuredDirectives(request, features, constraints, preferences, acceptanceCriteria);
+  const vagueRequest = isGenericImprovementText(request) || isGenericImprovementText(coreGoal);
+  if (vagueRequest) {
+    features = features.filter((feature) => !isGenericImprovementFeature(feature) && !isMetaWorkflowInstruction(feature));
+    acceptanceCriteria = acceptanceCriteria.filter((criterion) => !isMetaWorkflowInstruction(criterion));
+  }
   const memoryRules = input.memory_rules?.length ? uniqueStrings(input.memory_rules) : await memoryStore2.relatedRules(request);
-  if (coreGoal && !features.includes(coreGoal)) {
+  if (coreGoal && !features.includes(coreGoal) && !vagueRequest) {
     features.unshift(coreGoal);
   }
-  if (acceptanceCriteria.length === 0) {
+  if (acceptanceCriteria.length === 0 && !vagueRequest) {
     acceptanceCriteria = defaultAcceptance(features, constraints);
   }
   const taskMode = detectTaskMode(request);
@@ -16506,7 +16625,7 @@ async function parseRequirement(input, memoryStore2) {
     constraints: uniqueStrings(constraints),
     preferences: uniqueStrings(preferences),
     acceptance_criteria: uniqueStrings(acceptanceCriteria),
-    unknowns: unknowns(request, input.project_profile, features, taskMode),
+    unknowns: unknowns(request, input.project_profile, features, taskMode, vagueRequest),
     priority: priority(request, constraints),
     user_memory_related_rules: memoryRules,
     created_at: nowIso()
@@ -16528,6 +16647,10 @@ async function parseRequirement(input, memoryStore2) {
 function coreGoalFromSentences(sentences) {
   if (sentences.length === 0) {
     return "Clarify and implement the requested Codex coding task";
+  }
+  const vagueSentence = sentences.find((sentence) => isGenericImprovementText(sentence));
+  if (vagueSentence) {
+    return cleanGoal(vagueSentence).slice(0, 240);
   }
   const scored = sentences.map((sentence, index) => ({ sentence, index, score: goalScore(sentence, index) })).sort((left, right) => right.score - left.score || left.index - right.index);
   const selected = scored[0]?.sentence || sentences[0];
@@ -16592,9 +16715,15 @@ function enrichWithStructuredDirectives(request, features, constraints, preferen
     constraints.push("Do not disclose detailed internal capability design or implementation-sensitive workflow details.");
     preferences.push("Public-facing documentation should describe benefits without exposing proprietary implementation details.");
   }
+  if (/\bbefore\s+(?:implementation|edit|editing|code changes?)\b/iu.test(request)) {
+    constraints.push("Generate planning or task-pack artifacts before implementation.");
+  }
 }
-function unknowns(request, projectProfile, features, taskMode) {
+function unknowns(request, projectProfile, features, taskMode, vagueRequest) {
   const missing = [];
+  if (vagueRequest) {
+    missing.push(...vagueClarificationQuestions);
+  }
   if (!projectProfile) {
     missing.push("Target project directory has not been scanned yet.");
   }
@@ -17342,15 +17471,24 @@ async function pairStrands(input, memoryStore2) {
   const activatedEffects = activateEffects(library, query, inferredFamilies);
   const caseRecall = recallCases(library, query, inferredFamilies);
   const evidenceAdjustment = scoreAdjustmentFromEffects(activatedEffects, requirement.unknowns.length, unmatched.length);
-  const pairingScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
+  const adjustedScore = applyEvidenceAdjustment(baseScore, evidenceAdjustment, requirement.unknowns.length);
+  const vagueGate = evaluateVagueRequest(requirement, analysis);
+  const safetyGate = evaluateSafetyGate(requirement);
+  const pairingScore = applyScoreCaps(adjustedScore, requirement, analysis, vagueGate.is_vague, safetyGate);
+  const blocked = vagueGate.is_vague || safetyGate.blocked || pairingScore < 70;
   const result2 = {
     pairing_score: pairingScore,
     matched_pairs: matched,
     unmatched_pairs: unmatched,
-    warnings: uniqueStrings([...warnings(pairingScore, unmatched, requirement.unknowns), ...library.warnings]),
-    missing_information: requirement.unknowns,
-    ready_for_codex: pairingScore >= 70,
-    execution_level: pairingScore >= 90 ? "full" : pairingScore >= 70 ? "cautious" : "blocked",
+    warnings: uniqueStrings([
+      ...warnings(pairingScore, unmatched, requirement.unknowns, vagueGate.is_vague),
+      ...vagueGate.warnings,
+      ...safetyGate.warnings,
+      ...library.warnings
+    ]),
+    missing_information: uniqueStrings([...requirement.unknowns, ...vagueGate.is_vague ? vagueClarificationQuestions : []]),
+    ready_for_codex: !blocked,
+    execution_level: blocked ? "blocked" : pairingScore >= 90 ? "full" : "cautious",
     dna_alignment: dnaAlignment(pairingScore),
     activated_effects: activatedEffects,
     case_recall: caseRecall,
@@ -17626,9 +17764,61 @@ function applyEvidenceAdjustment(baseScore, adjustment, unknownCount) {
   }
   return adjusted;
 }
-function warnings(scoreValue, unmatched, missing) {
+function applyScoreCaps(scoreValue, requirement, analysis, vagueRequest, safetyGate) {
+  let value = scoreValue;
+  if (vagueRequest) {
+    value = Math.min(value, 60);
+  }
+  if (safetyGate.blocked) {
+    value = Math.min(value, 69);
+  } else if (safetyGate.cautious) {
+    value = Math.min(value, 89);
+  }
+  if (requirement.acceptance_criteria.length === 0) {
+    value -= 15;
+  }
+  if (analysis.affected_files.length === 0 || analysis.affected_files.some((file) => /inspect project structure|scan the target project/i.test(file))) {
+    value -= 15;
+  }
+  if (requirement.constraints.length === 0) {
+    value -= 10;
+  }
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+function evaluateSafetyGate(requirement) {
+  const request = requirement.original_request;
+  const lowered = request.toLowerCase();
+  const protectiveMention = /assert(?:ing)?\s+\.env\s+is\s+forbidden|\.env\s+is\s+forbidden|unless explicitly requested/i.test(request) || /(security review|review for hardcoded secrets|report risks|do not change files|do not edit files|只报告|不要改 files|不改 files)/i.test(
+    request
+  );
+  const asksForSecret = /(hardcoded|add|write|store|commit|put|save).{0,40}(api key|token|secret|password|\.env)/i.test(request) || /(api key|token|secret|password).{0,40}(\.env|hardcoded|commit|store|save)/i.test(request) || /密钥|令牌|硬编码/u.test(request);
+  const dangerousCommand2 = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc|删除核心配置|直接执行/u.test(request);
+  const destructiveConfig = /\b(delete|remove|wipe|reset|overwrite|format)\b/i.test(request) && /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config)/i.test(request);
+  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+  const planOnlyOrApproval = /\b(do not edit files yet|wait for approval|before editing|do not apply it until|plan a .*change|only prepare|do not modify production code)\b/i.test(
+    request
+  ) || /先不要改文件|只生成任务包|只准备修复方案|不要继续新增功能|等待.*确认/u.test(request);
+  if (!protectiveMention && (asksForSecret || dangerousCommand2 || destructiveConfig || deceptiveOrNoReview)) {
+    return {
+      blocked: true,
+      cautious: false,
+      warnings: ["High-risk request detected; block direct execution and require clarification or explicit safe scope."]
+    };
+  }
+  if (planOnlyOrApproval || !protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered)) {
+    return {
+      blocked: false,
+      cautious: true,
+      warnings: ["Cautious execution gate applied because the request requires approval, planning first, or sensitive-file guardrails."]
+    };
+  }
+  return { blocked: false, cautious: false, warnings: [] };
+}
+function warnings(scoreValue, unmatched, missing, vagueRequest) {
   const items = [];
-  if (scoreValue >= 90) {
+  if (vagueRequest) {
+    items.push("Vague request blocked; ask clarification questions before generating an editing task pack.");
+  } else if (scoreValue >= 90) {
     items.push("Pairing score is high enough for a complete Codex Task Pack.");
   } else if (scoreValue >= 70) {
     items.push("Task Pack can be generated, but include assumptions, risks, and caution notes.");
@@ -17971,11 +18161,12 @@ function toRelative(root, file) {
 // src/tools/generateTaskPack.ts
 async function generateTaskPack(input, memoryStore2) {
   const taskId = artifactId("codedna-task", input.requirement_strand.created_at, input.requirement_strand.core_goal);
+  const blocked = isBlocked(input.pairing_result);
   const markdown = renderTaskPack(input, taskId);
   let artifactPath;
   if (input.save !== false) {
     artifactPath = await memoryStore2.saveMarkdown(
-      `tasks/${timestampedName(input.requirement_strand.core_goal, ".codex_task.md")}`,
+      `tasks/${timestampedName(input.requirement_strand.core_goal, blocked ? ".clarification.md" : ".codex_task.md")}`,
       markdown
     );
   }
@@ -17997,7 +18188,7 @@ function renderTaskPack(input, taskId) {
   const requirement = input.requirement_strand;
   const analysis = input.analysis_strand;
   const pairing = input.pairing_result;
-  return `# Codex Task Pack
+  return `# ${isBlocked(pairing) ? "CodeDNA Clarification Pack" : "Codex Task Pack"}
 
 Task ID: ${taskId}
 
@@ -18007,7 +18198,7 @@ Task ID: ${taskId}
 - Execution Level: ${pairing.execution_level}
 - Ready for Codex: ${pairing.ready_for_codex ? "yes" : "no"}
 - Gate note: ${statusNote(pairing)}
-${pairing.pairing_score < 70 ? "\n**Do not execute this task directly. Clarify the missing information before asking Codex to edit files.**\n" : ""}
+${isBlocked(pairing) ? "\n**Do not execute this task directly. Clarify the missing information before asking Codex to edit files.**\n" : ""}
 
 ## CodeDNA Core Chain
 
@@ -18150,6 +18341,9 @@ Risks / Follow-ups:
 `;
 }
 function statusNote(pairing) {
+  if (isBlocked(pairing)) {
+    return "Direct execution is blocked. Ask clarification questions before generating an editing task pack.";
+  }
   if (pairing.pairing_score >= 90) {
     return "Generate and execute the task pack normally.";
   }
@@ -18157,6 +18351,9 @@ function statusNote(pairing) {
     return "Generate the task pack with assumptions and risk notes attached.";
   }
   return "Direct execution is blocked. Use this pack to gather missing information before implementation.";
+}
+function isBlocked(pairing) {
+  return pairing.execution_level === "blocked" || !pairing.ready_for_codex || pairing.pairing_score < 70;
 }
 function projectContext(projectProfile) {
   if (!projectProfile) {
@@ -19010,7 +19207,7 @@ async function runFullWorkflow(input, memoryStore2) {
   warnings3.push(...parsed.warnings, ...analysis.warnings, ...pairingResult.warnings);
   warnings3.push(...highRisk.warnings);
   let taskPackPath;
-  if (mode !== "plan_only" && pairingResult.pairing_score >= 70 && pairingResult.ready_for_codex) {
+  if (mode !== "plan_only" && pairingResult.pairing_score >= 70 && pairingResult.ready_for_codex && pairingResult.execution_level !== "blocked") {
     const pack = await generateTaskPack(
       {
         requirement_strand: parsed.requirement_strand,
@@ -19030,7 +19227,7 @@ async function runFullWorkflow(input, memoryStore2) {
     project_genome: projectGenome,
     task_pack_path: taskPackPath,
     next_action: nextAction(pairingResult, mode),
-    clarification_questions: clarificationQuestions(pairingResult, warnings3),
+    clarification_questions: clarificationQuestions(pairingResult, warnings3, parsed.requirement_strand, analysis.analysis_strand),
     warnings: uniqueStrings(warnings3)
   };
 }
@@ -19052,12 +19249,18 @@ async function assertDirectory(path2) {
 }
 function highRiskRequest(request) {
   const lowered = request.toLowerCase();
-  const sensitive = /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config|pyproject\.toml)/i.test(request);
-  const destructive = /\b(delete|remove|wipe|drop|destroy|reset|overwrite|format)\b/i.test(request);
-  if (destructive && sensitive) {
+  const protectiveMention = /assert(?:ing)?\s+\.env\s+is\s+forbidden|\.env\s+is\s+forbidden|unless explicitly requested/i.test(request) || /(security review|review for hardcoded secrets|report risks|do not change files|do not edit files|只报告|不要改 files|不改 files)/i.test(
+    request
+  );
+  const sensitive = !protectiveMention && /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config|pyproject\.toml)/i.test(request);
+  const destructive = /\b(delete|remove|wipe|drop|destroy|reset|overwrite|format)\b|删除核心配置|直接执行/iu.test(request);
+  const secretWrite = !protectiveMention && (/(hardcoded|add|write|store|commit|put|save).{0,40}(api key|token|secret|password|\.env)/i.test(request) || /(api key|token|secret|password).{0,40}(\.env|hardcoded|commit|store|save)/i.test(request) || /密钥|令牌|硬编码/u.test(request));
+  const dangerousCommand2 = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc/i.test(request);
+  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+  if (destructive && sensitive || secretWrite || dangerousCommand2 || deceptiveOrNoReview) {
     return {
       severity: "blocked",
-      warnings: ["High-risk destructive request targets configuration, environment, or package-management files."]
+      warnings: ["High-risk request targets secrets, dangerous commands, verification bypass, or protected configuration files."]
     };
   }
   if (sensitive || /core file|environment variable|dependency lock|package manager/i.test(lowered)) {
@@ -19069,6 +19272,9 @@ function highRiskRequest(request) {
   return { severity: "none", warnings: [] };
 }
 function adjustedPairing(pairing, risk) {
+  if (pairing.execution_level === "blocked" || !pairing.ready_for_codex) {
+    return pairing;
+  }
   if (risk.severity === "blocked") {
     return {
       ...pairing,
@@ -19101,7 +19307,14 @@ function nextAction(pairing, mode) {
   }
   return "Generate guardrails and execute cautiously with explicit risk and assumption notes.";
 }
-function clarificationQuestions(pairing, warnings3) {
+function clarificationQuestions(pairing, warnings3, requirement, analysis) {
+  const vagueGate = evaluateVagueRequest(requirement, analysis);
+  if (vagueGate.is_vague || pairing.execution_level === "blocked") {
+    return uniqueStrings([
+      ...vagueClarificationQuestions,
+      ...pairing.missing_information.filter((item) => !vagueClarificationQuestions.includes(item))
+    ]);
+  }
   if (pairing.pairing_score >= 70) {
     return [];
   }

@@ -2,7 +2,7 @@
 
 ## Project
 
-<plugin-root>
+<PROJECT_ROOT>
 
 ## Request
 
@@ -54,17 +54,17 @@ node ./mcp-server/dist/server.js
 
 ## Generated Artifacts
 
-- project_profile: <plugin-root>\data\memory\project_profiles\codedna-plugin_project_profile.json
-- requirement: <plugin-root>\data\strands\20260615T170820Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.requirement.json
-- analysis: <plugin-root>\data\strands\20260615T170820Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.analysis.json
-- pairing: <plugin-root>\data\strands\20260615T170821Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.pairing.json
-- task_pack: <plugin-root>\data\tasks\20260615T170821Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.codex_task.md
-- review: <plugin-root>\data\reviews\20260615T170821Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.review.md
+- project_profile: <PROJECT_DATA>\memory\project_profiles\codedna-plugin_project_profile.json
+- requirement: <PROJECT_DATA>\strands\20260616T020234Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.requirement.json
+- analysis: <PROJECT_DATA>\strands\20260616T020234Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.analysis.json
+- pairing: <PROJECT_DATA>\strands\20260616T020234Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.pairing.json
+- task_pack: <PROJECT_DATA>\tasks\20260616T020234Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.codex_task.md
+- review: <PROJECT_DATA>\reviews\20260616T020234Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style.review.md
 
 ## Generated Example Files
 
-- task_pack: <plugin-root>\examples\real-project-validation\generated-task-pack.md
-- review_report: <plugin-root>\examples\real-project-validation\generated-review-report.md
+- task_pack: <PROJECT_ROOT>\examples\real-project-validation\generated-task-pack.md
+- review_report: <PROJECT_ROOT>\examples\real-project-validation\generated-review-report.md
 
 ## Memory Update
 

@@ -1,6 +1,6 @@
 {
   "name": "codedna-plugin",
-  "version": "0.1.8+codex.20260616010000",
+  "version": "0.1.9+codex.20260616014600",
   "description": "CodeDNA helps Codex handle complex coding tasks through a double-strand planning, execution, review, and memory workflow.",
   "author": {
     "name": "CodeDNA",
