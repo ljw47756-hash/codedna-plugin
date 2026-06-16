@@ -117,6 +117,14 @@ ${recalledCases(pairing.case_recall?.failure_patterns ?? [])}
 
 ${codexAssistance(pairing.codex_assistance ?? [])}
 
+## Codex Execution Mode
+
+${codexExecutionMode(pairing)}
+
+## Next Codex Prompt
+
+${nextCodexPrompt(requirement, analysis, pairing)}
+
 ## Original User Request
 
 ${requirement.original_request}
@@ -299,6 +307,39 @@ function codexAssistance(items: CodexAssistanceStep[]): string {
   return items
     .map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`)
     .join("\n");
+}
+
+function codexExecutionMode(pairing: PairingResult): string {
+  if (isBlocked(pairing)) {
+    return [
+      "- Mode: blocked clarification.",
+      "- Codex should ask the missing-information questions and must not edit files.",
+      "- Use Codex reasoning to restate ambiguity, risk, and the smallest information needed to continue."
+    ].join("\n");
+  }
+  if (pairing.execution_level === "cautious") {
+    return [
+      "- Mode: cautious handoff.",
+      "- Do not edit files until the user approves execution or the guardrails are explicitly accepted.",
+      "- Use Codex to inspect relevant files, gather evidence, identify risks, and prepare the smallest safe repair or implementation plan.",
+      "- If the user confirms execution, Codex should follow the allowed files, forbidden files, test plan, and final response format exactly."
+    ].join("\n");
+  }
+  return [
+    "- Mode: full scoped execution.",
+    "- Codex should inspect the existing project first, apply only the scoped edits, run or explain verification, and then review the diff against this task pack.",
+    "- If verification fails, Codex should stop and generate a focused repair task rather than widening scope."
+  ].join("\n");
+}
+
+function nextCodexPrompt(requirement: RequirementStrand, analysis: AnalysisStrand, pairing: PairingResult): string {
+  if (isBlocked(pairing)) {
+    return `Ask the user these missing questions before editing: ${pairing.missing_information.join("; ") || "clarify scope, target files, constraints, and verification."}`;
+  }
+  if (pairing.execution_level === "cautious") {
+    return `Use Codex to inspect the project for "${requirement.core_goal}", gather evidence, list risks, and prepare the next safe action. Do not edit files until the user approves execution. Suggested verification focus: ${analysis.test_plan.slice(0, 3).join("; ") || "define focused verification before implementation."}`;
+  }
+  return `Use Codex to implement "${requirement.core_goal}" within the allowed scope, then run the test plan and review the diff before reporting completion.`;
 }
 
 function artifactId(prefix: string, createdAt: string, label: string): string {

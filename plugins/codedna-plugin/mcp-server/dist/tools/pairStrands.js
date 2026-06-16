@@ -347,6 +347,8 @@ function evaluateSafetyGate(requirement) {
     const destructiveConfig = /\b(delete|remove|wipe|reset|overwrite|format)\b/i.test(request) &&
         /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config)/i.test(request);
     const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+    const approvalBeforeEdit = hasApprovalBeforeEditSignal(request);
+    const packageFileBoundary = hasPackageFileBoundary(request);
     const planOnlyOrApproval = /\b(do not edit files yet|wait for approval|before editing|do not apply it until|plan a .*change|only prepare|do not modify production code)\b/i.test(request) || /先不要改文件|只生成任务包|只准备修复方案|不要继续新增功能|等待.*确认/u.test(request);
     if (!protectiveMention && (asksForSecret || dangerousCommand || destructiveConfig || deceptiveOrNoReview)) {
         return {
@@ -355,7 +357,7 @@ function evaluateSafetyGate(requirement) {
             warnings: ["High-risk request detected; block direct execution and require clarification or explicit safe scope."]
         };
     }
-    if (planOnlyOrApproval || (!protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered))) {
+    if (approvalBeforeEdit || packageFileBoundary || planOnlyOrApproval || (!protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered))) {
         return {
             blocked: false,
             cautious: true,
@@ -363,6 +365,14 @@ function evaluateSafetyGate(requirement) {
         };
     }
     return { blocked: false, cautious: false, warnings: [] };
+}
+function hasApprovalBeforeEditSignal(request) {
+    return (/\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
+        /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) ||
+        /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request));
+}
+function hasPackageFileBoundary(request) {
+    return /\b(?:avoid|do not|don't|without|must not|no)\b.{0,50}\b(?:package files?|package-manager files?|package manager files?|dependency files?|lockfiles?|lock files?)\b/iu.test(request);
 }
 function warnings(scoreValue, unmatched, missing, vagueRequest) {
     const items = [];

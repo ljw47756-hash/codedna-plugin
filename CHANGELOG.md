@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.10+codex.20260616134805 - Cautious Gate And Codex Handoff Calibration
+
+- Improved cautious execution detection for approval-gated and package-file-restricted tasks.
+- Added stronger Codex execution-mode guidance inside generated task packs.
+- Added regression coverage for cautious handoff behavior.
+- Benchmark dry-run accuracy: 100%.
+
 ## 0.1.9+codex.20260616014600 - Self-Benchmark Evolution
 
 - Added the CodeDNA self-benchmark evolution loop.

@@ -101,6 +101,17 @@ const constraintHints = [
   "not normal",
   "not normal install",
   "fallback only",
+  "hold all file changes",
+  "hold file changes",
+  "hold code changes",
+  "defer edits",
+  "defer file changes",
+  "until i confirm",
+  "until i approve",
+  "wait for approval",
+  "wait for confirmation",
+  "do not touch files",
+  "no edits until",
   "不要",
   "别",
   "不再",
@@ -391,6 +402,10 @@ function enrichWithStructuredDirectives(
   if (/\bbefore\s+(?:implementation|edit|editing|code changes?)\b/iu.test(request)) {
     constraints.push("Generate planning or task-pack artifacts before implementation.");
   }
+  if (hasApprovalBeforeEditSignal(request)) {
+    constraints.push("Wait for explicit user confirmation before editing files.");
+    preferences.push("Use Codex for inspection, evidence gathering, and repair planning before implementation.");
+  }
 }
 
 function unknowns(
@@ -482,8 +497,10 @@ function hasTargetSignal(request: string): boolean {
 }
 
 function isPlanOnlyRequest(request: string): boolean {
-  return /(plan only|do not edit|no code changes|proposal only|方案|计划|先给我方案|先不用改代码|不用改代码|不要改代码|不改代码|不要提交|先不用提交|只给方案|先不用再改|不要继续开发|最终检查|最终交付验收)/iu.test(
-    request
+  return (
+    /(plan only|do not edit|no code changes|proposal only|方案|计划|先给我方案|先不用改代码|不用改代码|不要改代码|不改代码|不要提交|先不用提交|只给方案|先不用再改|不要继续开发|最终检查|最终交付验收)/iu.test(
+      request
+    ) || hasApprovalBeforeEditSignal(request)
   );
 }
 
@@ -493,4 +510,12 @@ function isDocumentationOnlyRequest(request: string): boolean {
 
 function hasStructuredScopeSignal(request: string): boolean {
   return /(逐项|对照.+打勾|[0-9一二三四五六七八九十百]+个部分|不要缩减.+范围|文件里?的范围|all\s+\w+\s+sections|check\s+them\s+off|requested\s+scope|do\s+not\s+reduce.+scope)/iu.test(request);
+}
+
+function hasApprovalBeforeEditSignal(request: string): boolean {
+  return (
+    /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
+    /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) ||
+    /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request)
+  );
 }

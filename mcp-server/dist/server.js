@@ -16473,6 +16473,17 @@ var constraintHints = [
   "not normal",
   "not normal install",
   "fallback only",
+  "hold all file changes",
+  "hold file changes",
+  "hold code changes",
+  "defer edits",
+  "defer file changes",
+  "until i confirm",
+  "until i approve",
+  "wait for approval",
+  "wait for confirmation",
+  "do not touch files",
+  "no edits until",
   "\u4E0D\u8981",
   "\u522B",
   "\u4E0D\u518D",
@@ -16718,6 +16729,10 @@ function enrichWithStructuredDirectives(request, features, constraints, preferen
   if (/\bbefore\s+(?:implementation|edit|editing|code changes?)\b/iu.test(request)) {
     constraints.push("Generate planning or task-pack artifacts before implementation.");
   }
+  if (hasApprovalBeforeEditSignal(request)) {
+    constraints.push("Wait for explicit user confirmation before editing files.");
+    preferences.push("Use Codex for inspection, evidence gathering, and repair planning before implementation.");
+  }
 }
 function unknowns(request, projectProfile, features, taskMode, vagueRequest) {
   const missing = [];
@@ -16797,13 +16812,16 @@ function hasTargetSignal(request) {
 function isPlanOnlyRequest(request) {
   return /(plan only|do not edit|no code changes|proposal only|方案|计划|先给我方案|先不用改代码|不用改代码|不要改代码|不改代码|不要提交|先不用提交|只给方案|先不用再改|不要继续开发|最终检查|最终交付验收)/iu.test(
     request
-  );
+  ) || hasApprovalBeforeEditSignal(request);
 }
 function isDocumentationOnlyRequest(request) {
   return /(readme|docs|documentation|homepage|guide|文档|说明|主页|仓库主页|安装说明|介绍|描述|总结|写清楚)/iu.test(request);
 }
 function hasStructuredScopeSignal(request) {
   return /(逐项|对照.+打勾|[0-9一二三四五六七八九十百]+个部分|不要缩减.+范围|文件里?的范围|all\s+\w+\s+sections|check\s+them\s+off|requested\s+scope|do\s+not\s+reduce.+scope)/iu.test(request);
+}
+function hasApprovalBeforeEditSignal(request) {
+  return /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) || /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) || /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request);
 }
 
 // src/tools/reverseAnalyze.ts
@@ -17795,6 +17813,8 @@ function evaluateSafetyGate(requirement) {
   const dangerousCommand2 = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc|删除核心配置|直接执行/u.test(request);
   const destructiveConfig = /\b(delete|remove|wipe|reset|overwrite|format)\b/i.test(request) && /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config)/i.test(request);
   const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+  const approvalBeforeEdit = hasApprovalBeforeEditSignal2(request);
+  const packageFileBoundary = hasPackageFileBoundary(request);
   const planOnlyOrApproval = /\b(do not edit files yet|wait for approval|before editing|do not apply it until|plan a .*change|only prepare|do not modify production code)\b/i.test(
     request
   ) || /先不要改文件|只生成任务包|只准备修复方案|不要继续新增功能|等待.*确认/u.test(request);
@@ -17805,7 +17825,7 @@ function evaluateSafetyGate(requirement) {
       warnings: ["High-risk request detected; block direct execution and require clarification or explicit safe scope."]
     };
   }
-  if (planOnlyOrApproval || !protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered)) {
+  if (approvalBeforeEdit || packageFileBoundary || planOnlyOrApproval || !protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered)) {
     return {
       blocked: false,
       cautious: true,
@@ -17813,6 +17833,12 @@ function evaluateSafetyGate(requirement) {
     };
   }
   return { blocked: false, cautious: false, warnings: [] };
+}
+function hasApprovalBeforeEditSignal2(request) {
+  return /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) || /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) || /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request);
+}
+function hasPackageFileBoundary(request) {
+  return /\b(?:avoid|do not|don't|without|must not|no)\b.{0,50}\b(?:package files?|package-manager files?|package manager files?|dependency files?|lockfiles?|lock files?)\b/iu.test(request);
 }
 function warnings(scoreValue, unmatched, missing, vagueRequest) {
   const items = [];
@@ -18244,6 +18270,14 @@ ${recalledCases(pairing.case_recall?.failure_patterns ?? [])}
 
 ${codexAssistance(pairing.codex_assistance ?? [])}
 
+## Codex Execution Mode
+
+${codexExecutionMode(pairing)}
+
+## Next Codex Prompt
+
+${nextCodexPrompt(requirement, analysis, pairing)}
+
 ## Original User Request
 
 ${requirement.original_request}
@@ -18408,6 +18442,37 @@ function codexAssistance(items) {
     return "- Use Codex to implement only after the task pack and guardrails are reviewed.";
   }
   return items.map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`).join("\n");
+}
+function codexExecutionMode(pairing) {
+  if (isBlocked(pairing)) {
+    return [
+      "- Mode: blocked clarification.",
+      "- Codex should ask the missing-information questions and must not edit files.",
+      "- Use Codex reasoning to restate ambiguity, risk, and the smallest information needed to continue."
+    ].join("\n");
+  }
+  if (pairing.execution_level === "cautious") {
+    return [
+      "- Mode: cautious handoff.",
+      "- Do not edit files until the user approves execution or the guardrails are explicitly accepted.",
+      "- Use Codex to inspect relevant files, gather evidence, identify risks, and prepare the smallest safe repair or implementation plan.",
+      "- If the user confirms execution, Codex should follow the allowed files, forbidden files, test plan, and final response format exactly."
+    ].join("\n");
+  }
+  return [
+    "- Mode: full scoped execution.",
+    "- Codex should inspect the existing project first, apply only the scoped edits, run or explain verification, and then review the diff against this task pack.",
+    "- If verification fails, Codex should stop and generate a focused repair task rather than widening scope."
+  ].join("\n");
+}
+function nextCodexPrompt(requirement, analysis, pairing) {
+  if (isBlocked(pairing)) {
+    return `Ask the user these missing questions before editing: ${pairing.missing_information.join("; ") || "clarify scope, target files, constraints, and verification."}`;
+  }
+  if (pairing.execution_level === "cautious") {
+    return `Use Codex to inspect the project for "${requirement.core_goal}", gather evidence, list risks, and prepare the next safe action. Do not edit files until the user approves execution. Suggested verification focus: ${analysis.test_plan.slice(0, 3).join("; ") || "define focused verification before implementation."}`;
+  }
+  return `Use Codex to implement "${requirement.core_goal}" within the allowed scope, then run the test plan and review the diff before reporting completion.`;
 }
 function artifactId(prefix, createdAt, label) {
   const stamp = (createdAt || (/* @__PURE__ */ new Date()).toISOString()).replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z").replace(/[^\dTZ]/g, "");
