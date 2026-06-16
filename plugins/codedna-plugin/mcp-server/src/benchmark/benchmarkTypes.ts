@@ -6,6 +6,7 @@ import type { RequirementStrand } from "../types/requirementStrand.js";
 
 export type BenchmarkCaseLevel = "blocked" | "cautious" | "full" | "edge";
 export type BenchmarkExecutionLevel = "blocked" | "cautious" | "full";
+export type BenchmarkDifficulty = "standard" | "hard-real";
 
 export interface BenchmarkCaseExpectation {
   expected_execution_level: BenchmarkExecutionLevel;
@@ -30,6 +31,7 @@ export interface BenchmarkCase {
 export interface BenchmarkCaseSuite {
   suite_id: string;
   seed: number;
+  difficulty: BenchmarkDifficulty;
   generated_at: string;
   cases: BenchmarkCase[];
   distribution: Record<BenchmarkCaseLevel, number>;

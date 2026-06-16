@@ -13,6 +13,7 @@ function benchmarkReport(input) {
     return `# CodeDNA Self-Benchmark Evolution
 
 Benchmark name: CodeDNA Self-Benchmark Evolution Loop
+Difficulty: ${input.difficulty ?? "standard"}
 Test time: ${final.generated_at}
 Rounds: ${input.runs.length}
 Cases per round: ${final.total_cases}
@@ -53,6 +54,8 @@ function evolutionLog(input) {
 ## Goal
 
 Run CodeDNA against generated benchmark cases and preserve the original double-strand workflow:
+
+Benchmark difficulty: ${input.difficulty ?? "standard"}
 
 \`\`\`text
 User Requirement Strand

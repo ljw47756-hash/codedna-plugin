@@ -4,15 +4,15 @@ export function normalizeText(value: unknown): string {
 
 export function splitSentences(value: string): string[] {
   return value
-    .split(/(?<=[.!?])\s+|(?<=[。！？；])\s*|[;；]\s*|\n+/u)
-    .map((part) => part.trim().replace(/^[,，.。\s]+|[,，.。\s]+$/g, ""))
+    .split(/(?<=[.!?])\s+|(?<=[。！？；])\s*|[;；銆锛紱]\s*|\n+/u)
+    .map((part) => part.trim().replace(/^[,，；。！？.!?銆锛紱\s]+|[,，；。！？.!?銆锛紱\s]+$/g, ""))
     .filter(Boolean);
 }
 
 export function splitClauses(value: string): string[] {
   const parts = value
-    .split(/[,，、]|(?:\s+and\s+)|(?:\s+with\s+)|(?:同时|但是|不过|然后|另外|并且|以及)/iu)
-    .map((part) => part.trim().replace(/^[.。\s]+|[.。\s]+$/g, ""))
+    .split(/[,，、；;銆锛紱]|(?:\s+and\s+)|(?:\s+with\s+)|(?:同时|但是|不过|然后|另外|并且|以及|鍚屾椂|浣嗘槸|涓嶈繃|鐒跺悗|鍙﹀|骞朵笖|浠ュ強)/iu)
+    .map((part) => part.trim().replace(/^[.。!?！？銆\s]+|[.。!?！？銆\s]+$/g, ""))
     .filter(Boolean);
   return parts.length > 0 ? parts : [value.trim()];
 }

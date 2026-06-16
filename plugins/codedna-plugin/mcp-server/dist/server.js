@@ -15902,10 +15902,10 @@ function normalizeText(value) {
   return String(value ?? "").replace(/\r/g, "\n").replace(/\s+/g, " ").trim();
 }
 function splitSentences(value) {
-  return value.split(/(?<=[.!?])\s+|(?<=[。！？；])\s*|[;；]\s*|\n+/u).map((part) => part.trim().replace(/^[,，.。\s]+|[,，.。\s]+$/g, "")).filter(Boolean);
+  return value.split(/(?<=[.!?])\s+|(?<=[。！？；])\s*|[;；銆锛紱]\s*|\n+/u).map((part) => part.trim().replace(/^[,，；。！？.!?銆锛紱\s]+|[,，；。！？.!?銆锛紱\s]+$/g, "")).filter(Boolean);
 }
 function splitClauses(value) {
-  const parts = value.split(/[,，、]|(?:\s+and\s+)|(?:\s+with\s+)|(?:同时|但是|不过|然后|另外|并且|以及)/iu).map((part) => part.trim().replace(/^[.。\s]+|[.。\s]+$/g, "")).filter(Boolean);
+  const parts = value.split(/[,，、；;銆锛紱]|(?:\s+and\s+)|(?:\s+with\s+)|(?:同时|但是|不过|然后|另外|并且|以及|鍚屾椂|浣嗘槸|涓嶈繃|鐒跺悗|鍙﹀|骞朵笖|浠ュ強)/iu).map((part) => part.trim().replace(/^[.。!?！？銆\s]+|[.。!?！？銆\s]+$/g, "")).filter(Boolean);
   return parts.length > 0 ? parts : [value.trim()];
 }
 function uniqueStrings(items) {
@@ -16167,6 +16167,207 @@ var zhPrivacyHints = [
   "implementation details",
   "proprietary"
 ];
+var zhPhasedHints = ["\u5148", "\u518D", "\u7136\u540E", "\u6700\u540E", "\u7B49\u6211\u8BF4\u7EE7\u7EED", "\u7B49\u5F85\u6211\u8BF4\u7EE7\u7EED", "\u4E0B\u4E00\u6279", "\u7B2C\u4E00\u6279", "\u7B2C\u4E8C\u6279", "\u5206\u6279"];
+var zhCorrectionHints = ["\u4E0D\u662F", "\u800C\u662F", "\u662F", "\u4E0D\u8981", "\u6539\u6210", "\u6362\u6210", "\u505C\u6B62\u5F53\u524D\u65B9\u5411"];
+zhFeatureHints.push(
+  "\u6DFB\u52A0",
+  "\u65B0\u589E",
+  "\u521B\u5EFA",
+  "\u751F\u6210",
+  "\u5B9E\u73B0",
+  "\u652F\u6301",
+  "\u4FEE\u590D",
+  "\u4F18\u5316",
+  "\u91CD\u6784",
+  "\u66F4\u65B0",
+  "\u68C0\u67E5",
+  "\u5BA1\u67E5",
+  "\u626B\u63CF",
+  "\u4FDD\u5B58",
+  "\u4E0A\u4F20",
+  "\u5B89\u88C5",
+  "\u542F\u7528",
+  "\u89E3\u6790",
+  "\u8FC1\u79FB",
+  "\u66FF\u6362",
+  "\u6362\u6210",
+  "\u8FDB\u5165",
+  "\u5B8C\u5584",
+  "\u65B9\u6848",
+  "\u6307\u5BFC",
+  "\u6392\u67E5",
+  "\u6CE8\u518C",
+  "\u6253\u5305",
+  "\u53D1\u5E03",
+  "\u90E8\u7F72",
+  "\u6587\u6863",
+  "\u8BF4\u660E",
+  "\u4EFB\u52A1\u5305",
+  "\u62A5\u544A",
+  "\u6D4B\u8BD5\u8BA1\u5212",
+  "\u56DE\u5F52"
+);
+zhConstraintHints.push(
+  "\u4E0D\u8981",
+  "\u522B",
+  "\u4E0D\u518D",
+  "\u4E0D\u8BB8",
+  "\u4E0D\u80FD",
+  "\u4E0D\u7528",
+  "\u4E0D\u5F97",
+  "\u7981\u6B62",
+  "\u907F\u514D",
+  "\u53EA\u5141\u8BB8",
+  "\u53EA\u505A",
+  "\u53EA\u6539",
+  "\u53EA\u80FD",
+  "\u5FC5\u987B",
+  "\u52A1\u5FC5",
+  "\u4E00\u5B9A\u8981",
+  "\u4FDD\u7559",
+  "\u4E0D\u8981\u6539",
+  "\u4E0D\u8981\u4FEE\u6539",
+  "\u4E0D\u8981\u63D0\u4EA4",
+  "\u4E0D\u8981\u4E0A\u4F20",
+  "\u4E0D\u8981\u7EE7\u7EED",
+  "\u4E0D\u8981\u7F29\u51CF",
+  "\u5148\u4E0D\u8981",
+  "\u5148\u4E0D\u7528",
+  "\u9664\u975E",
+  "\u7B49\u5F85\u6211\u8BF4",
+  "\u7B49\u6211\u8BF4",
+  "\u4E0D\u8981\u516C\u5F00",
+  "\u4E0D\u8981\u66B4\u9732",
+  "\u4E0D\u8981\u6CC4\u9732",
+  "\u907F\u514D\u6284\u88AD",
+  "\u9632\u6B62\u6284\u88AD",
+  "\u8303\u56F4\u5185",
+  "\u4E0D\u80FD\u52A0",
+  "\u4E0D\u8981\u52A0",
+  "\u4E0D\u5927\u6539"
+);
+zhPreferenceHints.push(
+  "\u504F\u597D",
+  "\u98CE\u683C",
+  "\u7B80\u5355",
+  "\u7B80\u6D01",
+  "\u6E05\u6670",
+  "\u4E00\u81F4",
+  "\u7D27\u51D1",
+  "\u53EF\u8BFB",
+  "\u7528\u4E2D\u6587",
+  "\u7528\u82F1\u6587",
+  "\u4E2D\u6587\u63CF\u8FF0",
+  "\u82F1\u6587",
+  "\u4E00\u6B65\u6B65",
+  "\u5148\u7ED9\u65B9\u6848",
+  "\u4E0D\u8981\u592A\u8BE6\u7EC6",
+  "\u907F\u514D\u66B4\u9732",
+  "\u4FDD\u5BC6",
+  "\u8BF4\u660E",
+  "\u63A8\u8350",
+  "\u5EFA\u8BAE",
+  "\u9002\u5408",
+  "\u4F18\u5148",
+  "\u6700\u597D",
+  "\u771F\u5B9E",
+  "\u7A33\u5B9A"
+);
+zhAcceptanceHints.push(
+  "\u9A8C\u6536",
+  "\u9A8C\u8BC1",
+  "\u6821\u9A8C",
+  "\u68C0\u67E5",
+  "\u5BA1\u67E5",
+  "\u6267\u884C\u540E",
+  "\u6D4B\u8BD5",
+  "\u56DE\u5F52\u6D4B\u8BD5",
+  "\u8FD0\u884C",
+  "\u901A\u8FC7",
+  "\u5B8C\u6210\u540E",
+  "\u6700\u540E",
+  "\u8F93\u51FA",
+  "\u544A\u8BC9\u6211",
+  "\u9010\u9879\u6253\u52FE",
+  "\u7ED3\u8BBA",
+  "\u7ED3\u679C",
+  "\u7F16\u8BD1",
+  "\u6784\u5EFA",
+  "\u8DD1\u4E00\u904D",
+  "\u786E\u8BA4",
+  "\u5217\u51FA",
+  "\u603B\u7ED3",
+  "\u62A5\u544A",
+  "\u5BF9\u7167",
+  "\u9A8C\u6536\u6210\u679C",
+  "\u901A\u8FC7\u7387"
+);
+zhPlanOnlyHints.push(
+  "\u5148\u7ED9\u65B9\u6848",
+  "\u53EA\u7ED9\u65B9\u6848",
+  "\u5148\u4E0D\u7528\u6539",
+  "\u5148\u4E0D\u8981\u6539",
+  "\u4E0D\u7528\u6539\u4EE3\u7801",
+  "\u4E0D\u8981\u6539\u4EE3\u7801",
+  "\u4E0D\u8981\u6539\u529F\u80FD\u4EE3\u7801",
+  "\u4E0D\u6539\u4EE3\u7801",
+  "\u5148\u4E0D\u7528\u63D0\u4EA4",
+  "\u53EA\u5206\u6790",
+  "\u53EA\u6392\u67E5",
+  "\u53EA\u505A\u8BCA\u65AD",
+  "\u5148\u6392\u67E5",
+  "\u5148\u68C0\u67E5",
+  "\u5148\u770B\u539F\u56E0",
+  "\u5148\u5B9A\u4F4D\u539F\u56E0",
+  "\u5148\u4E0D\u7528\u518D\u6539"
+);
+zhReviewOnlyHints.push(
+  "\u6700\u7EC8\u68C0\u67E5",
+  "\u6700\u7EC8\u9A8C\u6536",
+  "\u4EA4\u4ED8\u68C0\u67E5",
+  "\u5BA1\u67E5\u7ED3\u679C",
+  "\u68C0\u67E5\u662F\u5426",
+  "\u68C0\u67E5\u9690\u79C1\u6570\u636E",
+  "\u98CE\u9669\u7ED3\u8BBA",
+  "\u7ED9\u98CE\u9669\u7ED3\u8BBA",
+  "\u4E0D\u8981\u7EE7\u7EED\u65B0\u589E",
+  "\u4E0D\u8981\u5927\u6539",
+  "\u53EA\u505A\u9A8C\u6536",
+  "\u53EA\u505A\u6700\u7EC8\u68C0\u67E5",
+  "\u9A8C\u6536\u9636\u6BB5"
+);
+zhImplementationHints.push(
+  "\u5F00\u59CB\u4F18\u5316",
+  "\u5F00\u59CB\u5F00\u53D1",
+  "\u76F4\u63A5\u5B9E\u73B0",
+  "\u5E2E\u6211\u4FEE\u590D",
+  "\u4FEE\u590D",
+  "\u751F\u6210\u4EE3\u7801",
+  "\u5199\u5B8C\u6574\u4EE3\u7801",
+  "\u63D0\u4EA4\u5E76\u63A8\u9001",
+  "\u4E0A\u4F20\u5230 GitHub",
+  "\u5F00\u59CB\u6539",
+  "\u4FEE\u6539",
+  "\u53EA\u6539",
+  "\u6784\u5EFA",
+  "\u6253\u5305",
+  "\u8FD0\u884C npm run build"
+);
+zhPrivacyHints.push(
+  "\u4E0D\u8981\u516C\u5F00",
+  "\u4E0D\u8981\u66B4\u9732",
+  "\u907F\u514D\u522B\u4EBA\u6284\u88AD",
+  "\u907F\u514D\u6284\u88AD",
+  "\u4FDD\u5BC6",
+  "\u4E0D\u8981\u6CC4\u9732",
+  "\u4E0D\u8981\u628A\u80FD\u529B\u5177\u4F53\u8BF4\u51FA\u53BB",
+  "\u4E0D\u8981\u628A\u6240\u6709\u5185\u90E8\u80FD\u529B",
+  "\u5185\u90E8\u80FD\u529B\u5177\u4F53\u8BF4\u51FA\u53BB",
+  "\u4E0D\u8981\u8BF4\u51FA\u53BB",
+  "\u7167\u7740\u6284"
+);
+zhPhasedHints.push("\u5148", "\u518D", "\u7136\u540E", "\u6700\u540E", "\u7B49\u6211\u8BF4\u7EE7\u7EED", "\u7B49\u5F85\u6211\u8BF4\u7EE7\u7EED", "\u4E0B\u4E00\u6279", "\u7B2C\u4E00\u6279", "\u7B2C\u4E8C\u6279", "\u5206\u6279");
+zhCorrectionHints.push("\u4E0D\u662F", "\u800C\u662F", "\u662F", "\u4E0D\u8981", "\u6539\u6210", "\u6362\u6210", "\u505C\u6B62\u5F53\u524D\u65B9\u5411");
 function classifyClause(clause) {
   const labels = /* @__PURE__ */ new Set();
   const matchedRules = [];
@@ -16203,7 +16404,7 @@ function detectTaskMode(request) {
   if (containsAny(request, zhPlanOnlyHints) || /(?:只报告|只输出|只给)\s*(?:risks?|风险|结论)/iu.test(request) || /不要改\s*(?:files?|文件|代码)/iu.test(request) || /\b(plan only|proposal only|do not edit|do not change code|do not change files|no code changes|diagnose|diagnosis|do not change business logic)\b/iu.test(request)) {
     return "plan-only";
   }
-  if (containsAny(request, zhReviewOnlyHints) || isValidationOnlyRequest(request) || isInspectionOnlyRequest(request) || /\b(review only|diff only|final check|delivery check|do not add new features|do not continue development)\b/iu.test(request) || /\breview\b.{0,40}\bonly\b/iu.test(request)) {
+  if (containsAny(request, zhReviewOnlyHints) || isValidationOnlyRequest(request) || isInspectionOnlyRequest(request) || /\b(review only|only review|diff only|final check|delivery check|do not add new features|do not continue development)\b/iu.test(request) || /\bonly\s+review\b/iu.test(request)) {
     return "review-only";
   }
   if (containsAny(request, zhImplementationHints) || /\b(implement|fix|build|create|add|commit|push)\b/iu.test(request)) {
@@ -16231,6 +16432,9 @@ function extractCorrections(text) {
     /不是\s*([^，。；,.]+?)\s*[，,]?\s*(?:而是|是)\s*([^，。；,.]+)/gu,
     /不要\s*([^，。；,.]+?)\s*[，,]?\s*(?:要|改成|换成)\s*([^，。；,.]+)/gu,
     /停止当前方向\s*[，,]?\s*(?:改成|换成|要做)\s*([^，。；,.]+)/gu,
+    /不是\s*([^，。；,.]+?)\s*[，,]?\s*(?:而是|是)\s*([^，。；,.]+)/gu,
+    /不要\s*([^，。；,.]+?)\s*[，,]?\s*(?:要|改成|换成)\s*([^，。；,.]+)/gu,
+    /停止当前方向\s*[，,]?\s*(?:改成|换成|要做)\s*([^，。；,.]+)/gu,
     /(?:this\s+is\s+)?not\s+(?:a|an|the)?\s*([^.;,]+?)\s*(?:;|,|\s+but\s+)\s*(?:make\s+it\s+|it\s+is\s+|it's\s+|use\s+|build\s+)(?:a|an|the)?\s*([^.;,]+)/giu,
     /not\s+(?:a|an|the)?\s*([^.;,]+?)\s+but\s+(?:a|an|the)?\s*([^.;,]+)/giu
   ];
@@ -16252,7 +16456,7 @@ function extractCorrections(text) {
   return corrections.filter((item) => item.required_direction.length > 0);
 }
 function isPhasedInstruction(text) {
-  return /先.+?(再|然后|最后)/u.test(text) || /(等我说|等待我说).{0,12}(继续|下一步|下一批)/u.test(text) || /(第一批|第二批|下一批|分批)/u.test(text) || /\b(first|phase one|stage one|batch one).{0,80}\b(then|wait|continue|second|next)\b/iu.test(text) || /\bwait until I say continue\b/iu.test(text);
+  return /先.+?(再|然后|最后)/u.test(text) || /(等我说|等待我说).{0,12}(继续|下一步|下一批)/u.test(text) || /(第一批|第二批|下一批|分批)/u.test(text) || /先.+?(再|然后|最后)/u.test(text) || /(等我说|等待我说).{0,12}(继续|下一步|下一批)/u.test(text) || /(第一批|第二批|下一批|分批)/u.test(text) || /\b(first|phase one|stage one|batch one).{0,80}\b(then|wait|continue|second|next)\b/iu.test(text) || /\bwait until I say continue\b/iu.test(text);
 }
 function isPrivacyInstruction(text) {
   return containsAny(text, zhPrivacyHints);
@@ -16294,6 +16498,15 @@ var genericImprovementPatterns = [
   /\bmake\s+it\s+production\s+ready\b/i,
   /\bimprove\s+performance\b/i,
   /\bmake\s+the\s+ui\s+better\b/i,
+  /随便发挥/u,
+  /把项目做好/u,
+  /修复所有问题/u,
+  /优化整个项目/u,
+  /重构所有代码/u,
+  /全面优化/u,
+  /都修了/u,
+  /项目不太对/u,
+  /整个项目.*优化/u,
   /随便你发挥/u,
   /把项目做好/u,
   /修复所有问题/u,
@@ -16715,6 +16928,9 @@ function enrichWithStructuredDirectives(request, features, constraints, preferen
   for (const match of request.matchAll(/(?:只修改|只改)\s*([^，。；,.;]+)/gu)) {
     constraints.push(`\u53EA\u4FEE\u6539 ${match[1].trim()}`);
   }
+  for (const match of request.matchAll(/(?:只修改|只改|只允许修改|只能修改)\s*([^，。；,.;]+)/gu)) {
+    constraints.push(`Only modify ${match[1].trim()}`);
+  }
   for (const match of request.matchAll(/\b(?:only\s+modify|only\s+touch|touch\s+only|modify\s+only)\s+([^,.;]+)/giu)) {
     constraints.push(`Only modify ${match[1].trim()}`);
   }
@@ -16800,7 +17016,7 @@ function cleanGoal(value) {
   return value.replace(/^(please|help me|could you|can you|请|麻烦|帮我)\s*/iu, "").trim();
 }
 function hasVerificationSignal(request) {
-  return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(
+  return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|验收|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(
     request
   );
 }
@@ -16821,7 +17037,7 @@ function hasStructuredScopeSignal(request) {
   return /(逐项|对照.+打勾|[0-9一二三四五六七八九十百]+个部分|不要缩减.+范围|文件里?的范围|all\s+\w+\s+sections|check\s+them\s+off|requested\s+scope|do\s+not\s+reduce.+scope)/iu.test(request);
 }
 function hasApprovalBeforeEditSignal(request) {
-  return /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) || /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) || /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request);
+  return /(等我|等待我|等用户|等待用户).{0,20}(确认|批准|同意|说继续|继续)/u.test(request) || /(先生成|先准备|先给).{0,40}(方案|任务包|guardrails|计划).{0,80}(再改|再执行|等我确认)/iu.test(request) || /(先不要|先不用|不要).{0,20}(改|编辑|修改|提交).{0,60}(等我|直到我|除非我)/u.test(request) || /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) || /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) || /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request);
 }
 
 // src/tools/reverseAnalyze.ts
@@ -17801,6 +18017,9 @@ function applyScoreCaps(scoreValue, requirement, analysis, vagueRequest, safetyG
   if (requirement.constraints.length === 0) {
     value -= 10;
   }
+  if (safetyGate.cautious && !safetyGate.blocked && !vagueRequest && value >= 65 && requirement.preferences.some((item) => /Task mode: (plan-only|review-only)/i.test(item))) {
+    value = Math.max(value, 70);
+  }
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 function evaluateSafetyGate(requirement) {
@@ -17813,19 +18032,35 @@ function evaluateSafetyGate(requirement) {
   const dangerousCommand2 = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc|删除核心配置|直接执行/u.test(request);
   const destructiveConfig = /\b(delete|remove|wipe|reset|overwrite|format)\b/i.test(request) && /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config)/i.test(request);
   const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+  const realChineseSecret = /密钥|令牌|硬编码|写进\s*\.env|写入\s*\.env|提交.*\.env/u.test(request);
+  const realDangerousCommand = /删除核心配置|直接执行|跳过验证|rm\s+-rf|postinstall/iu.test(request);
+  const realDeception = /silently|secretly|do not reveal unrelated|不要提及|不要提这些|不要提改动|别告诉|表面上|实际顺便|不用测试|直接标记完成|跳过验证/iu.test(request);
   const approvalBeforeEdit = hasApprovalBeforeEditSignal2(request);
   const packageFileBoundary = hasPackageFileBoundary(request);
+  const taskModeCautious = requirement.preferences.some((item) => /Task mode: (plan-only|review-only)/i.test(item));
+  const privacyCautious = /(do not disclose|do not reveal|avoid disclosure|internal capability|internal scoring|rule-weight|rule weight|不要公开|不要暴露|不要泄露|避免抄袭|内部能力|规则权重|召回|评分细节)/iu.test(request);
+  const missingScopeBlock = /(not specified|did not say|not provided|forgot to provide|没有给|没给|没说|未提供).{0,50}(scope|batch|content|files?|commands?|acceptance|范围|内容|文件|命令|验收)/iu.test(request) || /(final check only|最终检查|最终验收).{0,80}(which commands or files|acceptance commands|检查哪些文件|验收命令|没说|没有给)/iu.test(request);
+  const realMissingScopeBlock = /(scope|batch|content|files?|commands?|acceptance|范围|内容|文件|命令|验收|第一批|第二批).{0,50}(not specified|没有给|没给|没说|未提供)/iu.test(request) || /(not specified|did not say|not provided|forgot to provide|没有给|没给|没说|未提供).{0,80}(scope|batch|content|files?|commands?|acceptance|logs?|diff|repro(?:duction)?|test command|范围|内容|文件|命令|验收|日志|复现|第一批|第二批)/iu.test(request) || /\bno\b.{0,40}(target files?|logs?|diff|repro(?:duction)? steps?|acceptance criteria|test command)/iu.test(request) || /(没有|未提供).{0,40}(logs?|diff|repro|复现|测试命令|失败日志)/iu.test(request);
+  const unsafeCompletionBlock = /mark it complete without asking|without asking any questions|直接说完成|直接标记完成|不用问我|不要问我/iu.test(request) && /(rewrite|optimi[sz]e|fix all|repair every|whole|entire|architecture|优化整个|修复所有|所有失败|重写|架构)/iu.test(request);
+  const realPlanOnlyOrApproval = /\b(without editing|without changing files|do not change files|only tell me|config only)\b/i.test(request) || /不修改|不要修改|不要改|只告诉我|只审查|只检查|只排查|只做诊断|先别改|先别写代码/u.test(request);
   const planOnlyOrApproval = /\b(do not edit files yet|wait for approval|before editing|do not apply it until|plan a .*change|only prepare|do not modify production code)\b/i.test(
     request
   ) || /先不要改文件|只生成任务包|只准备修复方案|不要继续新增功能|等待.*确认/u.test(request);
-  if (!protectiveMention && (asksForSecret || dangerousCommand2 || destructiveConfig || deceptiveOrNoReview)) {
+  if (missingScopeBlock || realMissingScopeBlock || unsafeCompletionBlock) {
+    return {
+      blocked: true,
+      cautious: false,
+      warnings: ["Missing scope or acceptance detail detected; block direct execution and ask for the missing files, commands, or phase content."]
+    };
+  }
+  if (!protectiveMention && (asksForSecret || dangerousCommand2 || destructiveConfig || deceptiveOrNoReview || realChineseSecret || realDangerousCommand || realDeception)) {
     return {
       blocked: true,
       cautious: false,
       warnings: ["High-risk request detected; block direct execution and require clarification or explicit safe scope."]
     };
   }
-  if (approvalBeforeEdit || packageFileBoundary || planOnlyOrApproval || !protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered)) {
+  if (approvalBeforeEdit || packageFileBoundary || taskModeCautious || privacyCautious || planOnlyOrApproval || realPlanOnlyOrApproval || !protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered)) {
     return {
       blocked: false,
       cautious: true,
@@ -17835,10 +18070,10 @@ function evaluateSafetyGate(requirement) {
   return { blocked: false, cautious: false, warnings: [] };
 }
 function hasApprovalBeforeEditSignal2(request) {
-  return /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) || /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) || /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request);
+  return /(等我|等待我|等用户|等待用户).{0,20}(确认|批准|同意|说继续|继续)/u.test(request) || /(先生成|先准备|先给).{0,40}(方案|任务包|guardrails|计划).{0,80}(再改|再执行|等我确认)/iu.test(request) || /(先不要|先不用|不要).{0,20}(改|编辑|修改|提交).{0,60}(等我|直到我|除非我)/u.test(request) || /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) || /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) || /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request);
 }
 function hasPackageFileBoundary(request) {
-  return /\b(?:avoid|do not|don't|without|must not|no)\b.{0,50}\b(?:package files?|package-manager files?|package manager files?|dependency files?|lockfiles?|lock files?)\b/iu.test(request);
+  return /\b(?:avoid|do not|don't|without|must not|no)\b.{0,50}\b(?:package files?|package-manager files?|package manager files?|dependency files?|lockfiles?|lock files?)\b/iu.test(request) || /(不要|别|避免|不能|不得).{0,30}(package\.json|锁文件|lockfile|依赖文件|package 文件)/iu.test(request);
 }
 function warnings(scoreValue, unmatched, missing, vagueRequest) {
   const items = [];
@@ -19320,9 +19555,10 @@ function highRiskRequest(request) {
   const sensitive = !protectiveMention && /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config|pyproject\.toml)/i.test(request);
   const destructive = /\b(delete|remove|wipe|drop|destroy|reset|overwrite|format)\b|删除核心配置|直接执行/iu.test(request);
   const secretWrite = !protectiveMention && (/(hardcoded|add|write|store|commit|put|save).{0,40}(api key|token|secret|password|\.env)/i.test(request) || /(api key|token|secret|password).{0,40}(\.env|hardcoded|commit|store|save)/i.test(request) || /密钥|令牌|硬编码/u.test(request));
-  const dangerousCommand2 = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc/i.test(request);
-  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
-  if (destructive && sensitive || secretWrite || dangerousCommand2 || deceptiveOrNoReview) {
+  const dangerousCommand2 = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc|删除核心配置|直接执行/i.test(request);
+  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|silently|secretly|do not reveal unrelated|不要提及|不要提这些|不要提改动|别告诉|表面上|实际顺便|不用测试|直接标记完成|跳过验证|不要写验收标准|不写验收标准/i.test(request);
+  const realChineseSecret = /密钥|令牌|硬编码|写进\s*\.env|写入\s*\.env|提交.*\.env/u.test(request);
+  if (destructive && sensitive || secretWrite || dangerousCommand2 || deceptiveOrNoReview || realChineseSecret) {
     return {
       severity: "blocked",
       warnings: ["High-risk request targets secrets, dangerous commands, verification bypass, or protected configuration files."]

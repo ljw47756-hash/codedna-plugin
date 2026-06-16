@@ -7,7 +7,7 @@ import { generateBenchmarkReports } from "../src/benchmark/benchmarkReportGenera
 import { planBenchmarkRepairs } from "../src/benchmark/benchmarkRepairPlanner.js";
 import { runBenchmarkRound } from "../src/benchmark/benchmarkRunner.js";
 import { scoreBenchmarkRound } from "../src/benchmark/benchmarkScorer.js";
-import type { BenchmarkMemoryPaths, BenchmarkRepairPlan, BenchmarkReportPaths, BenchmarkScoreSummary } from "../src/benchmark/benchmarkTypes.js";
+import type { BenchmarkDifficulty, BenchmarkMemoryPaths, BenchmarkRepairPlan, BenchmarkReportPaths, BenchmarkScoreSummary } from "../src/benchmark/benchmarkTypes.js";
 
 interface Args {
   rounds: number;
@@ -16,6 +16,7 @@ interface Args {
   seed: number;
   dryRun: boolean;
   projectPath: string;
+  difficulty: BenchmarkDifficulty;
 }
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -32,7 +33,7 @@ async function main(): Promise<void> {
   let finalScore: BenchmarkScoreSummary | undefined;
 
   for (let round = 1; round <= args.rounds; round += 1) {
-    const suite = generateBenchmarkCases({ seed: args.seed + round - 1, caseCount: args.cases });
+    const suite = generateBenchmarkCases({ seed: args.seed + round - 1, caseCount: args.cases, difficulty: args.difficulty });
     const roundId = `benchmark-round-${round}`;
     const run = await runBenchmarkRound({
       round_id: roundId,
@@ -69,7 +70,8 @@ async function main(): Promise<void> {
       final_score: finalScore,
       repair_plans: repairs,
       qualified,
-      threshold: args.threshold
+      threshold: args.threshold,
+      difficulty: args.difficulty
     });
   }
 
@@ -79,6 +81,7 @@ async function main(): Promise<void> {
     final_accuracy: finalScore.accuracy,
     rounds_completed: scores.length,
     cases_per_round: args.cases,
+    difficulty: args.difficulty,
     total_cases_tested: scores.reduce((sum, score) => sum + score.total_cases, 0),
     blocked_accuracy: finalScore.per_level_accuracy.blocked,
     cautious_accuracy: finalScore.per_level_accuracy.cautious,
@@ -139,7 +142,8 @@ function parseArgs(argv: string[]): Args {
     threshold: numberArg(values.get("threshold"), 95),
     seed: numberArg(values.get("seed"), 20260616),
     dryRun: values.get("dry-run") === true,
-    projectPath: String(values.get("project") ?? pluginRoot)
+    projectPath: String(values.get("project") ?? pluginRoot),
+    difficulty: difficultyArg(values.get("difficulty"))
   };
 }
 
@@ -149,6 +153,10 @@ function numberArg(value: string | boolean | undefined, fallback: number): numbe
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function difficultyArg(value: string | boolean | undefined): BenchmarkDifficulty {
+  return value === "hard-real" ? "hard-real" : "standard";
 }
 
 main().catch((error) => {

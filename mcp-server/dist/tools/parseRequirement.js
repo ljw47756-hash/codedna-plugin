@@ -327,6 +327,9 @@ function enrichWithStructuredDirectives(request, features, constraints, preferen
     for (const match of request.matchAll(/(?:只修改|只改)\s*([^，。；,.;]+)/gu)) {
         constraints.push(`只修改 ${match[1].trim()}`);
     }
+    for (const match of request.matchAll(/(?:只修改|只改|只允许修改|只能修改)\s*([^，。；,.;]+)/gu)) {
+        constraints.push(`Only modify ${match[1].trim()}`);
+    }
     for (const match of request.matchAll(/\b(?:only\s+modify|only\s+touch|touch\s+only|modify\s+only)\s+([^,.;]+)/giu)) {
         constraints.push(`Only modify ${match[1].trim()}`);
     }
@@ -412,7 +415,7 @@ function cleanGoal(value) {
     return value.replace(/^(please|help me|could you|can you|请|麻烦|帮我)\s*/iu, "").trim();
 }
 function hasVerificationSignal(request) {
-    return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(request);
+    return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|验收|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(request);
 }
 function hasTargetSignal(request) {
     return /(file|directory|path|page|screen|component|api|route|module|tool|server|mcp|src[\\/]|tests?[\\/]|package\.json|plugin\.json|README|docs?[\\/]|文件|目录|路径|页面|界面|组件|接口|路由|模块|工具|服务器|插件|仓库|项目|服务|配置|脚本)/iu.test(request);
@@ -427,7 +430,10 @@ function hasStructuredScopeSignal(request) {
     return /(逐项|对照.+打勾|[0-9一二三四五六七八九十百]+个部分|不要缩减.+范围|文件里?的范围|all\s+\w+\s+sections|check\s+them\s+off|requested\s+scope|do\s+not\s+reduce.+scope)/iu.test(request);
 }
 function hasApprovalBeforeEditSignal(request) {
-    return (/\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
+    return (/(等我|等待我|等用户|等待用户).{0,20}(确认|批准|同意|说继续|继续)/u.test(request) ||
+        /(先生成|先准备|先给).{0,40}(方案|任务包|guardrails|计划).{0,80}(再改|再执行|等我确认)/iu.test(request) ||
+        /(先不要|先不用|不要).{0,20}(改|编辑|修改|提交).{0,60}(等我|直到我|除非我)/u.test(request) ||
+        /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
         /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) ||
         /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request));
 }

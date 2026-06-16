@@ -9,6 +9,7 @@ export interface GenerateBenchmarkReportsInput {
   repair_plans: BenchmarkRepairPlan[];
   qualified: boolean;
   threshold: number;
+  difficulty?: string;
 }
 
 export async function generateBenchmarkReports(input: GenerateBenchmarkReportsInput): Promise<BenchmarkReportPaths> {
@@ -25,6 +26,7 @@ function benchmarkReport(input: GenerateBenchmarkReportsInput): string {
   return `# CodeDNA Self-Benchmark Evolution
 
 Benchmark name: CodeDNA Self-Benchmark Evolution Loop
+Difficulty: ${input.difficulty ?? "standard"}
 Test time: ${final.generated_at}
 Rounds: ${input.runs.length}
 Cases per round: ${final.total_cases}
@@ -66,6 +68,8 @@ function evolutionLog(input: GenerateBenchmarkReportsInput): string {
 ## Goal
 
 Run CodeDNA against generated benchmark cases and preserve the original double-strand workflow:
+
+Benchmark difficulty: ${input.difficulty ?? "standard"}
 
 \`\`\`text
 User Requirement Strand

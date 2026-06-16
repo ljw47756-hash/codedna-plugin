@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.11+codex.20260616065301 - Hard Real Scenario Calibration
+
+- Added a hard-real benchmark mode for second-round high-difficulty scenarios.
+- Improved Chinese, English, and mixed-language intent gates for plan-only, review-only, phased, privacy-sensitive, missing-scope, and unsafe-completion requests.
+- Added regression coverage for hard-real benchmark generation and real Chinese blocked/cautious/full routing.
+- Final hard-real benchmark accuracy: 98% on 100 scenarios with a 96% release threshold.
+
 ## 0.1.10+codex.20260616134805 - Cautious Gate And Codex Handoff Calibration
 
 - Improved cautious execution detection for approval-gated and package-file-restricted tasks.

@@ -4,6 +4,8 @@
 
 Run CodeDNA against generated benchmark cases and preserve the original double-strand workflow:
 
+Benchmark difficulty: hard-real
+
 ```text
 User Requirement Strand
     <-> Pairing Review
@@ -25,17 +27,17 @@ Reverse Analysis Strand
 
 ## Rounds
 
-- benchmark-round-1: accuracy 95%, failed 5, patterns `cautious: Pairing score calibration does not match the expected DNA gate level.`
+- benchmark-round-1: accuracy 98%, failed 2, patterns `blocked: Vague request detection or clarification question generation is incomplete.`
 
 ## Repairs
 
 - benchmark-round-1
-  - Adjust pairing score calculation and execution-level caps without hardcoding individual cases.
+  - Improve vague request detection and clarification question generation.
 
 ## Final Result
 
-- Final accuracy: 95%
-- Required threshold: 95%
+- Final accuracy: 98%
+- Required threshold: 96%
 - Qualified for release: yes
 - Remaining public limitations: Some local failure details remain in private memory evolution records.
 

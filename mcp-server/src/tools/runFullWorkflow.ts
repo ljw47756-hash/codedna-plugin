@@ -158,9 +158,10 @@ function highRiskRequest(request: string): { severity: "none" | "cautious" | "bl
     (/(hardcoded|add|write|store|commit|put|save).{0,40}(api key|token|secret|password|\.env)/i.test(request) ||
       /(api key|token|secret|password).{0,40}(\.env|hardcoded|commit|store|save)/i.test(request) ||
       /密钥|令牌|硬编码/u.test(request));
-  const dangerousCommand = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc/i.test(request);
-  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
-  if ((destructive && sensitive) || secretWrite || dangerousCommand || deceptiveOrNoReview) {
+  const dangerousCommand = /rm\s+-rf|postinstall|curl\s+.*\|\s*sh|powershell\s+-enc|删除核心配置|直接执行/i.test(request);
+  const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|silently|secretly|do not reveal unrelated|不要提及|不要提这些|不要提改动|别告诉|表面上|实际顺便|不用测试|直接标记完成|跳过验证|不要写验收标准|不写验收标准/i.test(request);
+  const realChineseSecret = /密钥|令牌|硬编码|写进\s*\.env|写入\s*\.env|提交.*\.env/u.test(request);
+  if ((destructive && sensitive) || secretWrite || dangerousCommand || deceptiveOrNoReview || realChineseSecret) {
     return {
       severity: "blocked",
       warnings: ["High-risk request targets secrets, dangerous commands, verification bypass, or protected configuration files."]

@@ -333,6 +333,13 @@ function applyScoreCaps(scoreValue, requirement, analysis, vagueRequest, safetyG
     if (requirement.constraints.length === 0) {
         value -= 10;
     }
+    if (safetyGate.cautious &&
+        !safetyGate.blocked &&
+        !vagueRequest &&
+        value >= 65 &&
+        requirement.preferences.some((item) => /Task mode: (plan-only|review-only)/i.test(item))) {
+        value = Math.max(value, 70);
+    }
     return Math.max(0, Math.min(100, Math.round(value)));
 }
 function evaluateSafetyGate(requirement) {
@@ -347,17 +354,39 @@ function evaluateSafetyGate(requirement) {
     const destructiveConfig = /\b(delete|remove|wipe|reset|overwrite|format)\b/i.test(request) &&
         /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config)/i.test(request);
     const deceptiveOrNoReview = /skip verification|no tests needed|do not mention|mark it complete without review|不要写验收标准|不写验收标准/i.test(request);
+    const realChineseSecret = /密钥|令牌|硬编码|写进\s*\.env|写入\s*\.env|提交.*\.env/u.test(request);
+    const realDangerousCommand = /删除核心配置|直接执行|跳过验证|rm\s+-rf|postinstall/iu.test(request);
+    const realDeception = /silently|secretly|do not reveal unrelated|不要提及|不要提这些|不要提改动|别告诉|表面上|实际顺便|不用测试|直接标记完成|跳过验证/iu.test(request);
     const approvalBeforeEdit = hasApprovalBeforeEditSignal(request);
     const packageFileBoundary = hasPackageFileBoundary(request);
+    const taskModeCautious = requirement.preferences.some((item) => /Task mode: (plan-only|review-only)/i.test(item));
+    const privacyCautious = /(do not disclose|do not reveal|avoid disclosure|internal capability|internal scoring|rule-weight|rule weight|不要公开|不要暴露|不要泄露|避免抄袭|内部能力|规则权重|召回|评分细节)/iu.test(request);
+    const missingScopeBlock = /(not specified|did not say|not provided|forgot to provide|没有给|没给|没说|未提供).{0,50}(scope|batch|content|files?|commands?|acceptance|范围|内容|文件|命令|验收)/iu.test(request) ||
+        /(final check only|最终检查|最终验收).{0,80}(which commands or files|acceptance commands|检查哪些文件|验收命令|没说|没有给)/iu.test(request);
+    const realMissingScopeBlock = /(scope|batch|content|files?|commands?|acceptance|范围|内容|文件|命令|验收|第一批|第二批).{0,50}(not specified|没有给|没给|没说|未提供)/iu.test(request) ||
+        /(not specified|did not say|not provided|forgot to provide|没有给|没给|没说|未提供).{0,80}(scope|batch|content|files?|commands?|acceptance|logs?|diff|repro(?:duction)?|test command|范围|内容|文件|命令|验收|日志|复现|第一批|第二批)/iu.test(request) ||
+        /\bno\b.{0,40}(target files?|logs?|diff|repro(?:duction)? steps?|acceptance criteria|test command)/iu.test(request) ||
+        /(没有|未提供).{0,40}(logs?|diff|repro|复现|测试命令|失败日志)/iu.test(request);
+    const unsafeCompletionBlock = /mark it complete without asking|without asking any questions|直接说完成|直接标记完成|不用问我|不要问我/iu.test(request) &&
+        /(rewrite|optimi[sz]e|fix all|repair every|whole|entire|architecture|优化整个|修复所有|所有失败|重写|架构)/iu.test(request);
+    const realPlanOnlyOrApproval = /\b(without editing|without changing files|do not change files|only tell me|config only)\b/i.test(request) ||
+        /不修改|不要修改|不要改|只告诉我|只审查|只检查|只排查|只做诊断|先别改|先别写代码/u.test(request);
     const planOnlyOrApproval = /\b(do not edit files yet|wait for approval|before editing|do not apply it until|plan a .*change|only prepare|do not modify production code)\b/i.test(request) || /先不要改文件|只生成任务包|只准备修复方案|不要继续新增功能|等待.*确认/u.test(request);
-    if (!protectiveMention && (asksForSecret || dangerousCommand || destructiveConfig || deceptiveOrNoReview)) {
+    if (missingScopeBlock || realMissingScopeBlock || unsafeCompletionBlock) {
+        return {
+            blocked: true,
+            cautious: false,
+            warnings: ["Missing scope or acceptance detail detected; block direct execution and ask for the missing files, commands, or phase content."]
+        };
+    }
+    if (!protectiveMention && (asksForSecret || dangerousCommand || destructiveConfig || deceptiveOrNoReview || realChineseSecret || realDangerousCommand || realDeception)) {
         return {
             blocked: true,
             cautious: false,
             warnings: ["High-risk request detected; block direct execution and require clarification or explicit safe scope."]
         };
     }
-    if (approvalBeforeEdit || packageFileBoundary || planOnlyOrApproval || (!protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered))) {
+    if (approvalBeforeEdit || packageFileBoundary || taskModeCautious || privacyCautious || planOnlyOrApproval || realPlanOnlyOrApproval || (!protectiveMention && /(\.env|package\.json|package-lock\.json|tsconfig\.json)/i.test(lowered))) {
         return {
             blocked: false,
             cautious: true,
@@ -367,12 +396,16 @@ function evaluateSafetyGate(requirement) {
     return { blocked: false, cautious: false, warnings: [] };
 }
 function hasApprovalBeforeEditSignal(request) {
-    return (/\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
+    return (/(等我|等待我|等用户|等待用户).{0,20}(确认|批准|同意|说继续|继续)/u.test(request) ||
+        /(先生成|先准备|先给).{0,40}(方案|任务包|guardrails|计划).{0,80}(再改|再执行|等我确认)/iu.test(request) ||
+        /(先不要|先不用|不要).{0,20}(改|编辑|修改|提交).{0,60}(等我|直到我|除非我)/u.test(request) ||
+        /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
         /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) ||
         /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request));
 }
 function hasPackageFileBoundary(request) {
-    return /\b(?:avoid|do not|don't|without|must not|no)\b.{0,50}\b(?:package files?|package-manager files?|package manager files?|dependency files?|lockfiles?|lock files?)\b/iu.test(request);
+    return (/\b(?:avoid|do not|don't|without|must not|no)\b.{0,50}\b(?:package files?|package-manager files?|package manager files?|dependency files?|lockfiles?|lock files?)\b/iu.test(request) ||
+        /(不要|别|避免|不能|不得).{0,30}(package\.json|锁文件|lockfile|依赖文件|package 文件)/iu.test(request));
 }
 function warnings(scoreValue, unmatched, missing, vagueRequest) {
     const items = [];

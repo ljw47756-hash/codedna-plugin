@@ -388,6 +388,9 @@ function enrichWithStructuredDirectives(
   for (const match of request.matchAll(/(?:只修改|只改)\s*([^，。；,.;]+)/gu)) {
     constraints.push(`只修改 ${match[1].trim()}`);
   }
+  for (const match of request.matchAll(/(?:只修改|只改|只允许修改|只能修改)\s*([^，。；,.;]+)/gu)) {
+    constraints.push(`Only modify ${match[1].trim()}`);
+  }
   for (const match of request.matchAll(/\b(?:only\s+modify|only\s+touch|touch\s+only|modify\s+only)\s+([^,.;]+)/giu)) {
     constraints.push(`Only modify ${match[1].trim()}`);
   }
@@ -485,7 +488,7 @@ function cleanGoal(value: string): string {
 }
 
 function hasVerificationSignal(request: string): boolean {
-  return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(
+  return /(test|pytest|verification|verify|acceptance|lint|build|release:check|release\s+check|npm\s+(test|run|run\s+build)|pnpm|yarn|测试|回归测试|验证|验收|校验|检查|编译|构建|运行|跑一次|跑通|通过)/iu.test(
     request
   );
 }
@@ -514,6 +517,9 @@ function hasStructuredScopeSignal(request: string): boolean {
 
 function hasApprovalBeforeEditSignal(request: string): boolean {
   return (
+    /(等我|等待我|等用户|等待用户).{0,20}(确认|批准|同意|说继续|继续)/u.test(request) ||
+    /(先生成|先准备|先给).{0,40}(方案|任务包|guardrails|计划).{0,80}(再改|再执行|等我确认)/iu.test(request) ||
+    /(先不要|先不用|不要).{0,20}(改|编辑|修改|提交).{0,60}(等我|直到我|除非我)/u.test(request) ||
     /\b(?:hold|defer|pause)\b.{0,50}\b(?:all\s+)?(?:file|code)?\s*(?:changes|edits)\b.{0,50}\b(?:until|unless)\b.{0,40}\b(?:i\s+)?(?:confirm|approve|say\s+continue)\b/iu.test(request) ||
     /\b(?:wait|pause)\b.{0,30}\b(?:for|until)\b.{0,30}\b(?:approval|confirmation|my confirmation|i approve|i confirm)\b/iu.test(request) ||
     /\b(?:prepare|draft|produce)\b.{0,40}\b(?:repair plan|plan|proposal)\b.{0,80}\b(?:before|without)\b.{0,40}\b(?:editing|edits|file changes|code changes)\b/iu.test(request)
