@@ -124,7 +124,7 @@ Use CodeDNA to review this output.
 新开一个 Codex 对话，输入：
 
 ```text
-Use CodeDNA full workflow for this project:
+Use CodeDNA staged workflow for this project and produce a compact Codex Execution Brief:
 C:\path\to\your\project
 
 Request:

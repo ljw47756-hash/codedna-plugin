@@ -7,12 +7,18 @@ import type { ProjectProfile } from "../types/projectProfile.js";
 import type { RequirementStrand } from "../types/requirementStrand.js";
 
 export interface ReviewCodexOutputInput {
-  requirement_strand: RequirementStrand;
-  analysis_strand: AnalysisStrand;
+  requirement_strand?: RequirementStrand;
+  analysis_strand?: AnalysisStrand;
   codex_output: string;
   project_profile?: ProjectProfile;
   save?: boolean;
 }
+
+type CompleteReviewInput = ReviewCodexOutputInput & {
+  requirement_strand: RequirementStrand;
+  analysis_strand: AnalysisStrand;
+  codex_output: string;
+};
 
 export interface ReviewCheck {
   name: string;
@@ -31,6 +37,8 @@ export interface ReviewCodexOutputOutput {
     modified_files: string[];
     markdown: string;
     next_codex_fix_prompt: string;
+    error_type?: "missing_required_input";
+    missing_inputs?: string[];
   };
   artifact_path?: string;
 }
@@ -39,18 +47,26 @@ export async function reviewCodexOutput(
   input: ReviewCodexOutputInput,
   memoryStore: MemoryStore
 ): Promise<ReviewCodexOutputOutput> {
+  const missingInputs = missingReviewInputs(input);
+  if (missingInputs.length > 0) {
+    return missingReviewInputReport(input, missingInputs, memoryStore);
+  }
+
+  const requirement = input.requirement_strand as RequirementStrand;
+  const analysis = input.analysis_strand as AnalysisStrand;
   const modifiedFiles = modifiedFilesFromText(input.codex_output);
   const deletedFiles = deletedFilesFromText(input.codex_output);
-  const checks = reviewChecks(input, modifiedFiles, deletedFiles);
+  const completeInput: CompleteReviewInput = { ...input, requirement_strand: requirement, analysis_strand: analysis };
+  const checks = reviewChecks(completeInput, modifiedFiles, deletedFiles);
   const verdict = finalVerdict(checks);
-  const nextPrompt = nextFixPrompt(input.requirement_strand, checks);
-  const reviewId = artifactId("codedna-review", input.requirement_strand.created_at, input.requirement_strand.core_goal);
-  const caseRecall = await reviewCaseRecall(input);
-  const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
+  const nextPrompt = nextFixPrompt(requirement, checks);
+  const reviewId = artifactId("codedna-review", requirement.created_at, requirement.core_goal);
+  const caseRecall = await reviewCaseRecall(completeInput);
+  const markdown = renderReview(completeInput, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
   let artifactPath: string | undefined;
   if (input.save !== false) {
     artifactPath = await memoryStore.saveMarkdown(
-      `reviews/${timestampedName(input.requirement_strand.core_goal, ".review.md")}`,
+      `reviews/${timestampedName(requirement.core_goal, ".review.md")}`,
       markdown
     );
   }
@@ -67,7 +83,85 @@ export async function reviewCodexOutput(
   };
 }
 
-async function reviewCaseRecall(input: ReviewCodexOutputInput): Promise<CaseRecall> {
+function missingReviewInputs(input: ReviewCodexOutputInput): string[] {
+  const missing: string[] = [];
+  if (!input.requirement_strand) {
+    missing.push("requirement_strand");
+  }
+  if (!input.analysis_strand) {
+    missing.push("analysis_strand");
+  }
+  if (!input.codex_output) {
+    missing.push("codex_output");
+  }
+  return missing;
+}
+
+async function missingReviewInputReport(
+  input: ReviewCodexOutputInput,
+  missingInputs: string[],
+  memoryStore: MemoryStore
+): Promise<ReviewCodexOutputOutput> {
+  const reviewId = artifactId("codedna-review-missing-input", new Date().toISOString(), missingInputs.join("-"));
+  const nextPrompt = [
+    "Cannot run CodeDNA review because required workflow inputs are missing.",
+    "",
+    "Recover by running the CodeDNA workflow in order:",
+    "1. codedna_parse_requirement with the original user request.",
+    "2. codedna_reverse_analyze with the Requirement Strand.",
+    "3. codedna_pair_strands with the Requirement and Analysis strands.",
+    "4. codedna_review_output with requirement_strand, analysis_strand, and codex_output.",
+    "",
+    `Missing inputs: ${missingInputs.join(", ")}`
+  ].join("\n");
+  const markdown = [
+    "# CodeDNA Review Recovery Report",
+    "",
+    `Review ID: ${reviewId}`,
+    "",
+    "## Status",
+    "",
+    "- Final Verdict: blocked",
+    "- Error Type: missing_required_input",
+    `- Missing Inputs: ${missingInputs.join(", ")}`,
+    "",
+    "## Codex Output Received",
+    "",
+    codexOutputSummary(input.codex_output ?? ""),
+    "",
+    "## Recovery Prompt",
+    "",
+    "```markdown",
+    nextPrompt,
+    "```"
+  ].join("\n");
+  let artifactPath: string | undefined;
+  if (input.save !== false) {
+    artifactPath = await memoryStore.saveMarkdown(`reviews/${timestampedName("missing-review-input", ".review.md")}`, markdown);
+  }
+  return {
+    review_report: {
+      review_id: reviewId,
+      verdict: "blocked",
+      checks: [
+        {
+          name: "Missing Required Input",
+          status: "fail",
+          detail: `Missing inputs: ${missingInputs.join(", ")}`,
+          severity: "high"
+        }
+      ],
+      modified_files: modifiedFilesFromText(input.codex_output ?? ""),
+      markdown,
+      next_codex_fix_prompt: nextPrompt,
+      error_type: "missing_required_input",
+      missing_inputs: missingInputs
+    },
+    artifact_path: artifactPath
+  };
+}
+
+async function reviewCaseRecall(input: CompleteReviewInput): Promise<CaseRecall> {
   const query = [
     input.requirement_strand.original_request,
     input.requirement_strand.core_goal,
@@ -79,7 +173,7 @@ async function reviewCaseRecall(input: ReviewCodexOutputInput): Promise<CaseReca
     input.codex_output
   ].join("\n");
   const library = await loadCaseLibrary();
-  return recallCases(library, query, inferEffectFamilies(query));
+  return recallCases(library, query, inferEffectFamilies(query), 2);
 }
 
 function modifiedFilesFromText(text: string): string[] {
@@ -124,7 +218,7 @@ function deletedFilesFromText(text: string): string[] {
   return [...files].sort();
 }
 
-function reviewChecks(input: ReviewCodexOutputInput, modifiedFiles: string[], deletedFiles: string[]): ReviewCheck[] {
+function reviewChecks(input: CompleteReviewInput, modifiedFiles: string[], deletedFiles: string[]): ReviewCheck[] {
   const lowered = input.codex_output.toLowerCase();
   const forbidden = forbiddenFileChanges(input, modifiedFiles);
   const dangerous = dangerousCommand(input.codex_output);
@@ -265,7 +359,7 @@ Return a concise summary, changed files, and verification evidence.`;
 }
 
 function renderReview(
-  input: ReviewCodexOutputInput,
+  input: CompleteReviewInput,
   reviewId: string,
   verdict: ReviewVerdict,
   checks: ReviewCheck[],
@@ -414,8 +508,14 @@ function recalledCases(items: RecalledCase[]): string {
     return "- None";
   }
   return items
-    .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
+    .slice(0, 2)
+    .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${compactText(item.codedna_pattern)} Guardrail: ${compactText(item.guardrail)}`)
     .join("\n");
+}
+
+function compactText(value: string, limit = 150): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1)}...` : normalized;
 }
 
 function memoryEvolutionProposal(verdict: ReviewVerdict, requiredFixes: ReviewCheck[]): string {
@@ -453,12 +553,12 @@ function finalVerdict(checks: ReviewCheck[]): ReviewVerdict {
   return "pass";
 }
 
-function requirementMismatch(input: ReviewCodexOutputInput, loweredOutput: string): string {
+function requirementMismatch(input: CompleteReviewInput, loweredOutput: string): string {
   const terms = importantTerms(input.requirement_strand.core_goal);
   return terms.some((term) => loweredOutput.includes(term)) ? "" : "Implementation summary does not match key Requirement Strand terms.";
 }
 
-function forbiddenFileChanges(input: ReviewCodexOutputInput, modifiedFiles: string[]): string[] {
+function forbiddenFileChanges(input: CompleteReviewInput, modifiedFiles: string[]): string[] {
   const protectedPatterns = input.project_profile?.do_not_touch ?? [];
   const strictAllowed = strictAllowedFiles(input.requirement_strand.constraints);
   return modifiedFiles.filter((file) => {
@@ -492,7 +592,7 @@ function matchesPathPattern(file: string, pattern: string): boolean {
   return normalizedFile === normalizedPattern || normalizedFile.endsWith(`/${normalizedPattern}`);
 }
 
-function deletedImportantFiles(input: ReviewCodexOutputInput, deletedFiles: string[]): string[] {
+function deletedImportantFiles(input: CompleteReviewInput, deletedFiles: string[]): string[] {
   return deletedFiles.filter((file) => {
     if (input.analysis_strand.affected_files.some((affected) => matchesPathPattern(file, affected))) {
       return true;
@@ -530,7 +630,7 @@ function plaintextApiKey(output: string): string {
   return found ? `Plaintext API key or token pattern detected: ${found.source}` : "";
 }
 
-function broadRefactorRisk(input: ReviewCodexOutputInput, modifiedFiles: string[]): string {
+function broadRefactorRisk(input: CompleteReviewInput, modifiedFiles: string[]): string {
   const requestedRefactor = /refactor|restructure|reorganize|architecture/i.test(input.requirement_strand.original_request);
   if (!requestedRefactor && /broad refactor|large refactor|restructure|rewrote|reorganized/i.test(input.codex_output)) {
     return "Output describes a broad refactor that was not requested.";

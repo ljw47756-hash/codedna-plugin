@@ -1,4 +1,5 @@
 import { sanitizeFilename, timestampedName } from "../storage/jsonStore.js";
+import { compileCodexExecutionBrief } from "./codexBrief.js";
 import { uniqueStrings } from "./common.js";
 export async function generateTaskPack(input, memoryStore) {
     const taskId = artifactId("codedna-task", input.requirement_strand.created_at, input.requirement_strand.core_goal);
@@ -26,6 +27,12 @@ function renderTaskPack(input, taskId) {
     const requirement = input.requirement_strand;
     const analysis = input.analysis_strand;
     const pairing = input.pairing_result;
+    const codexBrief = compileCodexExecutionBrief({
+        requirement,
+        analysis,
+        pairing,
+        project_profile: input.project_profile
+    });
     return `# ${isBlocked(pairing) ? "CodeDNA Clarification Pack" : "Codex Task Pack"}
 
 Task ID: ${taskId}
@@ -62,6 +69,10 @@ ${pairing.dna_alignment ? `- Requirement Strand: ${pairing.dna_alignment.require
 - Evolution Layer: ${pairing.dna_alignment.evolution_layer}
 - Gate Status: ${pairing.dna_alignment.gate_status}` : "- DNA alignment metadata is not available."}
 
+## Codex Execution Brief
+
+${codexBrief.markdown}
+
 ## Score Evidence
 
 ${bullets(pairing.score_explanation ?? [])}
@@ -97,13 +108,13 @@ ${requirement.original_request}
 ## Requirement Strand Summary
 
 \`\`\`json
-${JSON.stringify(requirement, null, 2)}
+${JSON.stringify(requirementSummary(requirement), null, 2)}
 \`\`\`
 
 ## Analysis Strand Summary
 
 \`\`\`json
-${JSON.stringify(analysis, null, 2)}
+${JSON.stringify(analysisSummary(analysis), null, 2)}
 \`\`\`
 
 ## Project Profile Summary
@@ -244,6 +255,7 @@ function effects(items) {
         return "- None";
     }
     return items
+        .slice(0, 6)
         .map((item) => `- **${item.effect_family}** -> ${item.pair_type} (weight ${item.weight}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
         .join("\n");
 }
@@ -252,7 +264,8 @@ function recalledCases(items) {
         return "- None";
     }
     return items
-        .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
+        .slice(0, 2)
+        .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${compactText(item.codedna_pattern)} Guardrail: ${compactText(item.guardrail)}`)
         .join("\n");
 }
 function codexAssistance(items) {
@@ -260,6 +273,7 @@ function codexAssistance(items) {
         return "- Use Codex to implement only after the task pack and guardrails are reviewed.";
     }
     return items
+        .slice(0, 4)
         .map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`)
         .join("\n");
 }
@@ -300,4 +314,34 @@ function artifactId(prefix, createdAt, label) {
         .replace(/\.\d{3}Z$/, "Z")
         .replace(/[^\dTZ]/g, "");
     return `${prefix}-${stamp}-${sanitizeFilename(label, "task")}`.slice(0, 140);
+}
+function requirementSummary(requirement) {
+    return {
+        original_request: requirement.original_request,
+        core_goal: requirement.core_goal,
+        features: requirement.features.slice(0, 8),
+        constraints: requirement.constraints.slice(0, 8),
+        preferences: requirement.preferences.slice(0, 6),
+        acceptance_criteria: requirement.acceptance_criteria.slice(0, 8),
+        unknowns: requirement.unknowns.slice(0, 8),
+        priority: requirement.priority
+    };
+}
+function analysisSummary(analysis) {
+    return {
+        technical_goal: analysis.technical_goal,
+        suggested_architecture: analysis.suggested_architecture.slice(0, 6),
+        required_modules: analysis.required_modules.slice(0, 8),
+        affected_files: analysis.affected_files.slice(0, 12),
+        implementation_steps: analysis.implementation_steps.slice(0, 8),
+        risks: analysis.risks.slice(0, 8),
+        dependencies: analysis.dependencies.slice(0, 8),
+        test_plan: analysis.test_plan.slice(0, 8),
+        rollback_plan: analysis.rollback_plan.slice(0, 6),
+        assumptions: analysis.assumptions.slice(0, 8)
+    };
+}
+function compactText(value, limit = 150) {
+    const normalized = value.replace(/\s+/g, " ").trim();
+    return normalized.length > limit ? `${normalized.slice(0, limit - 1)}...` : normalized;
 }

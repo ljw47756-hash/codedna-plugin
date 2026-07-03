@@ -73,7 +73,7 @@ An Analysis Strand with `technical_goal`, `suggested_architecture`, `required_mo
 
 ## failure_handling
 
-- If project profile is missing, generate a generic plan and recommend `codedna_scan_project` or `codedna_run_full_workflow`.
+- If project profile is missing, generate a generic plan and recommend `codedna_scan_project`; use `codedna_run_full_workflow` only when the user explicitly wants a one-shot diagnostic workflow.
 - If affected files are uncertain, keep them conservative.
 - If dependencies are unknown, mark install/test commands as assumptions.
 

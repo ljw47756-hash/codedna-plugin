@@ -46,7 +46,7 @@ Do not generate an execution brief for blocked tasks except as a clarification p
 
 ## output_expected
 
-Markdown task pack, guardrails, required tests, and readiness JSON saved under `data/tasks/` and `data/guardrails/`.
+Compact Codex Execution Brief first, with the full Markdown task pack saved under `data/tasks/` when persistence is useful. Guardrails and required tests are saved or returned separately.
 
 ## workflow_steps
 
@@ -55,7 +55,7 @@ Markdown task pack, guardrails, required tests, and readiness JSON saved under `
 3. Call `codedna_generate_task_pack`.
 4. If `pairing_score < 70`, present it as a blocked clarification pack and do not execute.
 5. If ready, call `codedna_generate_guardrails`.
-6. Use the Markdown and guardrails together as the Codex implementation contract.
+6. Use the task pack's `Codex Execution Brief` and guardrails as the Codex implementation contract; do not paste the whole task pack unless the user asks for it.
 7. After implementation, require a diff or changed-file summary for `codedna_review_diff`.
 
 ## mcp_tools_to_call
@@ -67,7 +67,9 @@ Markdown task pack, guardrails, required tests, and readiness JSON saved under `
 
 ## rules
 
-- Include Task ID, Pairing Score, Execution Level, Original Request, Requirement Strand Summary, Analysis Strand Summary, Project Profile Summary, Allowed Files, Forbidden Files, Implementation Plan, Risks, Assumptions, Acceptance Criteria, Test Plan, Rollback Plan, Codex Self-check, and Required Final Response Format.
+- Put the compact Codex Execution Brief before internal evidence sections.
+- Keep full Task ID, Pairing Score, Execution Level, Original Request, Requirement Strand Summary, Analysis Strand Summary, Project Profile Summary, Allowed Files, Forbidden Files, Implementation Plan, Risks, Assumptions, Acceptance Criteria, Test Plan, Rollback Plan, Codex Self-check, and Required Final Response Format inside the saved artifact.
+- In chat, summarize the brief and artifact path instead of dumping the full artifact by default.
 - Do not omit user constraints.
 - Do not hide assumptions.
 - A blocked task pack must say not to execute directly.

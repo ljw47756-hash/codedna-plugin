@@ -7,6 +7,7 @@ import type { ProjectProfile } from "../types/projectProfile.js";
 import type { RequirementStrand } from "../types/requirementStrand.js";
 import { uniqueStrings } from "./common.js";
 import { buildProjectGenome } from "./buildProjectGenome.js";
+import { compileCodexExecutionBrief, type CodexExecutionBrief } from "./codexBrief.js";
 import { generateTaskPack } from "./generateTaskPack.js";
 import { pairStrands } from "./pairStrands.js";
 import { parseRequirement } from "./parseRequirement.js";
@@ -32,6 +33,7 @@ export interface RunFullWorkflowOutput {
   project_profile?: ProjectProfile;
   project_genome?: ProjectGenome;
   task_pack_path?: string;
+  codex_execution_brief: CodexExecutionBrief;
   next_action: string;
   clarification_questions: string[];
   warnings: string[];
@@ -95,6 +97,12 @@ export async function runFullWorkflow(
   );
   const highRisk = highRiskRequest(request);
   const pairingResult = adjustedPairing(paired.pairing_result, highRisk);
+  const codexExecutionBrief = compileCodexExecutionBrief({
+    requirement: parsed.requirement_strand,
+    analysis: analysis.analysis_strand,
+    pairing: pairingResult,
+    project_profile: projectProfile
+  });
   warnings.push(...parsed.warnings, ...analysis.warnings, ...pairingResult.warnings);
   warnings.push(...highRisk.warnings);
 
@@ -119,6 +127,7 @@ export async function runFullWorkflow(
     project_profile: projectProfile,
     project_genome: projectGenome,
     task_pack_path: taskPackPath,
+    codex_execution_brief: codexExecutionBrief,
     next_action: nextAction(pairingResult, mode),
     clarification_questions: clarificationQuestions(pairingResult, warnings, parsed.requirement_strand, analysis.analysis_strand),
     warnings: uniqueStrings(warnings)

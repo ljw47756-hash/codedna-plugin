@@ -88,6 +88,12 @@ test("codedna_run_full_workflow generates a ready workflow and blocks vague exec
     assert.ok(ready.pairing_result.pairing_score >= 70);
     assert.match(ready.next_action, /guardrails|execute/i);
     assert.match(ready.task_pack_path ?? "", /data[\\/]+tasks/);
+    assert.match(ready.codex_execution_brief.markdown, /Codex Execution Brief/);
+    assert.match(ready.codex_execution_brief.markdown, /Objective:/);
+    assert.match(ready.codex_execution_brief.markdown, /Do Not:/);
+    assert.match(ready.codex_execution_brief.markdown, /Verification:/);
+    assert.ok(ready.codex_execution_brief.markdown.length < 2500);
+    assert.doesNotMatch(ready.codex_execution_brief.markdown, /Relevant Success Patterns|Requirement Strand Summary|Analysis Strand Summary/);
 
     const blocked = await runFullWorkflow(
       {

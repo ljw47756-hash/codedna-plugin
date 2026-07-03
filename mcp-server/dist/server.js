@@ -18419,6 +18419,118 @@ function toRelative(root, file) {
   return relative(root, file).replace(/\\/g, "/");
 }
 
+// src/tools/codexBrief.ts
+function compileCodexExecutionBrief(input) {
+  const objective = compact(input.requirement.core_goal || input.requirement.original_request, 220);
+  const executionMode = input.pairing.execution_level;
+  const allowedScope = allowedScopeFor(input.analysis, input.project_profile);
+  const doNot = doNotFor(input.requirement, input.project_profile);
+  const executionSteps = executionStepsFor(input.analysis, input.pairing);
+  const verification = verificationFor(input.analysis, input.requirement);
+  const intentType = inferIntentType(input.requirement, input.analysis);
+  const reviewGate = executionMode === "blocked" ? "Do not edit files. Ask the missing clarification questions first." : "After editing, provide changed files, verification evidence, and residual risks so CodeDNA can review the diff.";
+  const markdown = [
+    "# Codex Execution Brief",
+    "",
+    `Objective: ${objective}`,
+    `Mode: ${executionMode}`,
+    `Intent Type: ${intentType}`,
+    "",
+    "Allowed Scope:",
+    bullets(allowedScope),
+    "",
+    "Do Not:",
+    bullets(doNot),
+    "",
+    "Execution:",
+    numbered(executionSteps),
+    "",
+    "Verification:",
+    bullets(verification),
+    "",
+    "Review Gate:",
+    `- ${reviewGate}`
+  ].join("\n");
+  return {
+    objective,
+    execution_mode: executionMode,
+    intent_type: intentType,
+    allowed_scope: allowedScope,
+    do_not: doNot,
+    execution_steps: executionSteps,
+    verification,
+    review_gate: reviewGate,
+    markdown
+  };
+}
+function allowedScopeFor(analysis, projectProfile) {
+  return uniqueStrings([
+    ...analysis.affected_files.slice(0, 10),
+    ...analysis.required_modules.slice(0, 5),
+    ...projectProfile?.component_dirs.slice(0, 3) ?? [],
+    ...projectProfile?.api_dirs.slice(0, 3) ?? []
+  ]).slice(0, 12);
+}
+function doNotFor(requirement, projectProfile) {
+  const hardConstraints = requirement.constraints.filter(
+    (item) => /(do not|don't|never|forbid|forbidden|only|must not|avoid|不要|不能|禁止|只|仅|不得|避免)/iu.test(item)
+  );
+  return uniqueStrings([
+    ...hardConstraints,
+    "Do not broaden scope or perform unrelated refactors.",
+    "Do not add hardcoded secrets, tokens, API keys, personal paths, or local runtime data.",
+    "Do not modify dependency lockfiles, environment files, or generated output unless explicitly required.",
+    ...projectProfile?.do_not_touch.slice(0, 6) ?? []
+  ]).slice(0, 10);
+}
+function executionStepsFor(analysis, pairing) {
+  if (pairing.execution_level === "blocked") {
+    return uniqueStrings([
+      ...pairing.missing_information.slice(0, 5).map((item) => `Clarify: ${item}`),
+      "Do not edit files until the missing information is resolved."
+    ]);
+  }
+  return analysis.implementation_steps.slice(0, 6);
+}
+function verificationFor(analysis, requirement) {
+  return uniqueStrings([
+    ...analysis.test_plan.slice(0, 5),
+    ...requirement.acceptance_criteria.slice(0, 4).map((item) => `Verify acceptance: ${item}`),
+    "If a command cannot be run, explain why and provide the closest manual verification."
+  ]).slice(0, 8);
+}
+function inferIntentType(requirement, analysis) {
+  const text = `${requirement.original_request}
+${requirement.features.join("\n")}
+${analysis.required_modules.join("\n")}`;
+  if (/(review-only|review only|审查|审核|只检查|只做检查)/iu.test(text)) {
+    return "review_only";
+  }
+  if (/(plan-only|plan only|只计划|只给方案|不要改代码|不要编辑文件)/iu.test(text)) {
+    return "plan_only";
+  }
+  if (/(repair|fix failure|修复|失败|报错)/iu.test(text)) {
+    return "repair";
+  }
+  if (/(readme|docs|documentation|文档|说明)/iu.test(text)) {
+    return "documentation";
+  }
+  if (requirement.features.length || analysis.implementation_steps.length) {
+    return "implementation";
+  }
+  return "unknown";
+}
+function bullets(items) {
+  return items.length ? items.map((item) => `- ${compact(item, 180)}`).join("\n") : "- None";
+}
+function numbered(items) {
+  return items.length ? items.map((item, index) => `${index + 1}. ${compact(item, 180)}`).join("\n") : "1. No execution step generated.";
+}
+function compact(value, limit) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1)}...` : normalized;
+}
+
 // src/tools/generateTaskPack.ts
 async function generateTaskPack(input, memoryStore2) {
   const taskId = artifactId("codedna-task", input.requirement_strand.created_at, input.requirement_strand.core_goal);
@@ -18449,6 +18561,12 @@ function renderTaskPack(input, taskId) {
   const requirement = input.requirement_strand;
   const analysis = input.analysis_strand;
   const pairing = input.pairing_result;
+  const codexBrief = compileCodexExecutionBrief({
+    requirement,
+    analysis,
+    pairing,
+    project_profile: input.project_profile
+  });
   return `# ${isBlocked(pairing) ? "CodeDNA Clarification Pack" : "Codex Task Pack"}
 
 Task ID: ${taskId}
@@ -18485,9 +18603,13 @@ ${pairing.dna_alignment ? `- Requirement Strand: ${pairing.dna_alignment.require
 - Evolution Layer: ${pairing.dna_alignment.evolution_layer}
 - Gate Status: ${pairing.dna_alignment.gate_status}` : "- DNA alignment metadata is not available."}
 
+## Codex Execution Brief
+
+${codexBrief.markdown}
+
 ## Score Evidence
 
-${bullets(pairing.score_explanation ?? [])}
+${bullets2(pairing.score_explanation ?? [])}
 
 ## Activated CodeDNA Effects
 
@@ -18520,13 +18642,13 @@ ${requirement.original_request}
 ## Requirement Strand Summary
 
 \`\`\`json
-${JSON.stringify(requirement, null, 2)}
+${JSON.stringify(requirementSummary(requirement), null, 2)}
 \`\`\`
 
 ## Analysis Strand Summary
 
 \`\`\`json
-${JSON.stringify(analysis, null, 2)}
+${JSON.stringify(analysisSummary(analysis), null, 2)}
 \`\`\`
 
 ## Project Profile Summary
@@ -18535,43 +18657,43 @@ ${projectContext(input.project_profile)}
 
 ## Allowed Files
 
-${bullets(analysis.affected_files)}
+${bullets2(analysis.affected_files)}
 
 ## Forbidden Files
 
-${bullets(forbiddenScope(requirement, input.project_profile))}
+${bullets2(forbiddenScope(requirement, input.project_profile))}
 
 ## Missing Information
 
-${bullets(pairing.missing_information)}
+${bullets2(pairing.missing_information)}
 
 ## Implementation Plan
 
-${numbered(analysis.implementation_steps)}
+${numbered2(analysis.implementation_steps)}
 
 ## Architecture Guidance
 
-${bullets(analysis.suggested_architecture)}
+${bullets2(analysis.suggested_architecture)}
 
 ## Risks
 
-${bullets(analysis.risks)}
+${bullets2(analysis.risks)}
 
 ## Assumptions
 
-${bullets(analysis.assumptions)}
+${bullets2(analysis.assumptions)}
 
 ## Acceptance Criteria
 
-${bullets(requirement.acceptance_criteria)}
+${bullets2(requirement.acceptance_criteria)}
 
 ## Test Plan
 
-${bullets(analysis.test_plan)}
+${bullets2(analysis.test_plan)}
 
 ## Rollback Plan
 
-${bullets(analysis.rollback_plan)}
+${bullets2(analysis.rollback_plan)}
 
 ## Pairing Review
 
@@ -18648,10 +18770,10 @@ function forbiddenScope(requirement, projectProfile) {
     ...projectProfile?.do_not_touch.slice(0, 20) ?? []
   ]);
 }
-function bullets(items) {
+function bullets2(items) {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : "- None";
 }
-function numbered(items) {
+function numbered2(items) {
   return items.length ? items.map((item, index) => `${index + 1}. ${item}`).join("\n") : "1. No steps generated.";
 }
 function pairs(items) {
@@ -18664,19 +18786,19 @@ function effects(items) {
   if (items.length === 0) {
     return "- None";
   }
-  return items.map((item) => `- **${item.effect_family}** -> ${item.pair_type} (weight ${item.weight}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
+  return items.slice(0, 6).map((item) => `- **${item.effect_family}** -> ${item.pair_type} (weight ${item.weight}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
 }
 function recalledCases(items) {
   if (items.length === 0) {
     return "- None";
   }
-  return items.map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
+  return items.slice(0, 2).map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${compactText(item.codedna_pattern)} Guardrail: ${compactText(item.guardrail)}`).join("\n");
 }
 function codexAssistance(items) {
   if (items.length === 0) {
     return "- Use Codex to implement only after the task pack and guardrails are reviewed.";
   }
-  return items.map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`).join("\n");
+  return items.slice(0, 4).map((item) => `- **${item.stage}**: ${item.codex_role} Prompt: ${item.prompt} Expected output: ${item.expected_output}`).join("\n");
 }
 function codexExecutionMode(pairing) {
   if (isBlocked(pairing)) {
@@ -18713,21 +18835,58 @@ function artifactId(prefix, createdAt, label) {
   const stamp = (createdAt || (/* @__PURE__ */ new Date()).toISOString()).replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z").replace(/[^\dTZ]/g, "");
   return `${prefix}-${stamp}-${sanitizeFilename(label, "task")}`.slice(0, 140);
 }
+function requirementSummary(requirement) {
+  return {
+    original_request: requirement.original_request,
+    core_goal: requirement.core_goal,
+    features: requirement.features.slice(0, 8),
+    constraints: requirement.constraints.slice(0, 8),
+    preferences: requirement.preferences.slice(0, 6),
+    acceptance_criteria: requirement.acceptance_criteria.slice(0, 8),
+    unknowns: requirement.unknowns.slice(0, 8),
+    priority: requirement.priority
+  };
+}
+function analysisSummary(analysis) {
+  return {
+    technical_goal: analysis.technical_goal,
+    suggested_architecture: analysis.suggested_architecture.slice(0, 6),
+    required_modules: analysis.required_modules.slice(0, 8),
+    affected_files: analysis.affected_files.slice(0, 12),
+    implementation_steps: analysis.implementation_steps.slice(0, 8),
+    risks: analysis.risks.slice(0, 8),
+    dependencies: analysis.dependencies.slice(0, 8),
+    test_plan: analysis.test_plan.slice(0, 8),
+    rollback_plan: analysis.rollback_plan.slice(0, 6),
+    assumptions: analysis.assumptions.slice(0, 8)
+  };
+}
+function compactText(value, limit = 150) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1)}...` : normalized;
+}
 
 // src/tools/reviewCodexOutput.ts
 async function reviewCodexOutput(input, memoryStore2) {
+  const missingInputs = missingReviewInputs(input);
+  if (missingInputs.length > 0) {
+    return missingReviewInputReport(input, missingInputs, memoryStore2);
+  }
+  const requirement = input.requirement_strand;
+  const analysis = input.analysis_strand;
   const modifiedFiles = modifiedFilesFromText(input.codex_output);
   const deletedFiles = deletedFilesFromText(input.codex_output);
-  const checks = reviewChecks(input, modifiedFiles, deletedFiles);
+  const completeInput = { ...input, requirement_strand: requirement, analysis_strand: analysis };
+  const checks = reviewChecks(completeInput, modifiedFiles, deletedFiles);
   const verdict = finalVerdict(checks);
-  const nextPrompt = nextFixPrompt(input.requirement_strand, checks);
-  const reviewId = artifactId2("codedna-review", input.requirement_strand.created_at, input.requirement_strand.core_goal);
-  const caseRecall = await reviewCaseRecall(input);
-  const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
+  const nextPrompt = nextFixPrompt(requirement, checks);
+  const reviewId = artifactId2("codedna-review", requirement.created_at, requirement.core_goal);
+  const caseRecall = await reviewCaseRecall(completeInput);
+  const markdown = renderReview(completeInput, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
   let artifactPath;
   if (input.save !== false) {
     artifactPath = await memoryStore2.saveMarkdown(
-      `reviews/${timestampedName(input.requirement_strand.core_goal, ".review.md")}`,
+      `reviews/${timestampedName(requirement.core_goal, ".review.md")}`,
       markdown
     );
   }
@@ -18739,6 +18898,78 @@ async function reviewCodexOutput(input, memoryStore2) {
       modified_files: modifiedFiles,
       markdown,
       next_codex_fix_prompt: nextPrompt
+    },
+    artifact_path: artifactPath
+  };
+}
+function missingReviewInputs(input) {
+  const missing = [];
+  if (!input.requirement_strand) {
+    missing.push("requirement_strand");
+  }
+  if (!input.analysis_strand) {
+    missing.push("analysis_strand");
+  }
+  if (!input.codex_output) {
+    missing.push("codex_output");
+  }
+  return missing;
+}
+async function missingReviewInputReport(input, missingInputs, memoryStore2) {
+  const reviewId = artifactId2("codedna-review-missing-input", (/* @__PURE__ */ new Date()).toISOString(), missingInputs.join("-"));
+  const nextPrompt = [
+    "Cannot run CodeDNA review because required workflow inputs are missing.",
+    "",
+    "Recover by running the CodeDNA workflow in order:",
+    "1. codedna_parse_requirement with the original user request.",
+    "2. codedna_reverse_analyze with the Requirement Strand.",
+    "3. codedna_pair_strands with the Requirement and Analysis strands.",
+    "4. codedna_review_output with requirement_strand, analysis_strand, and codex_output.",
+    "",
+    `Missing inputs: ${missingInputs.join(", ")}`
+  ].join("\n");
+  const markdown = [
+    "# CodeDNA Review Recovery Report",
+    "",
+    `Review ID: ${reviewId}`,
+    "",
+    "## Status",
+    "",
+    "- Final Verdict: blocked",
+    "- Error Type: missing_required_input",
+    `- Missing Inputs: ${missingInputs.join(", ")}`,
+    "",
+    "## Codex Output Received",
+    "",
+    codexOutputSummary(input.codex_output ?? ""),
+    "",
+    "## Recovery Prompt",
+    "",
+    "```markdown",
+    nextPrompt,
+    "```"
+  ].join("\n");
+  let artifactPath;
+  if (input.save !== false) {
+    artifactPath = await memoryStore2.saveMarkdown(`reviews/${timestampedName("missing-review-input", ".review.md")}`, markdown);
+  }
+  return {
+    review_report: {
+      review_id: reviewId,
+      verdict: "blocked",
+      checks: [
+        {
+          name: "Missing Required Input",
+          status: "fail",
+          detail: `Missing inputs: ${missingInputs.join(", ")}`,
+          severity: "high"
+        }
+      ],
+      modified_files: modifiedFilesFromText(input.codex_output ?? ""),
+      markdown,
+      next_codex_fix_prompt: nextPrompt,
+      error_type: "missing_required_input",
+      missing_inputs: missingInputs
     },
     artifact_path: artifactPath
   };
@@ -18755,7 +18986,7 @@ async function reviewCaseRecall(input) {
     input.codex_output
   ].join("\n");
   const library = await loadCaseLibrary();
-  return recallCases(library, query, inferEffectFamilies(query));
+  return recallCases(library, query, inferEffectFamilies(query), 2);
 }
 function modifiedFilesFromText(text) {
   const files = /* @__PURE__ */ new Set();
@@ -18922,13 +19153,13 @@ function nextFixPrompt(requirement, checks) {
   if (failing.length === 0) {
     return "No fix prompt is required. The submitted result appears ready after final human review.";
   }
-  const bullets4 = failing.map((check) => `- ${check.name}: ${check.detail}`).join("\n");
+  const bullets5 = failing.map((check) => `- ${check.name}: ${check.detail}`).join("\n");
   return `Please revise the previous implementation for this request:
 
 ${requirement.original_request}
 
 Address these CodeDNA review findings without changing unrelated files:
-${bullets4}
+${bullets5}
 
 Return a concise summary, changed files, and verification evidence.`;
 }
@@ -19067,7 +19298,11 @@ function recalledCases2(items) {
   if (items.length === 0) {
     return "- None";
   }
-  return items.map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`).join("\n");
+  return items.slice(0, 2).map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${compactText2(item.codedna_pattern)} Guardrail: ${compactText2(item.guardrail)}`).join("\n");
+}
+function compactText2(value, limit = 150) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1)}...` : normalized;
 }
 function memoryEvolutionProposal(verdict, requiredFixes) {
   if (verdict === "pass") {
@@ -19504,6 +19739,12 @@ async function runFullWorkflow(input, memoryStore2) {
   );
   const highRisk = highRiskRequest(request);
   const pairingResult = adjustedPairing(paired.pairing_result, highRisk);
+  const codexExecutionBrief = compileCodexExecutionBrief({
+    requirement: parsed.requirement_strand,
+    analysis: analysis.analysis_strand,
+    pairing: pairingResult,
+    project_profile: projectProfile
+  });
   warnings3.push(...parsed.warnings, ...analysis.warnings, ...pairingResult.warnings);
   warnings3.push(...highRisk.warnings);
   let taskPackPath;
@@ -19526,6 +19767,7 @@ async function runFullWorkflow(input, memoryStore2) {
     project_profile: projectProfile,
     project_genome: projectGenome,
     task_pack_path: taskPackPath,
+    codex_execution_brief: codexExecutionBrief,
     next_action: nextAction(pairingResult, mode),
     clarification_questions: clarificationQuestions(pairingResult, warnings3, parsed.requirement_strand, analysis.analysis_strand),
     warnings: uniqueStrings(warnings3)
@@ -20150,21 +20392,25 @@ Risks:
 
 // src/tools/validateChanges.ts
 async function validateChanges(input, _memoryStore) {
+  if (!input.guardrails) {
+    return missingGuardrailsValidation();
+  }
+  const guardrails = input.guardrails;
   const changes = parseChangeSet(input.diff_text ?? "", input.changed_files ?? []);
   const risk = analyzeDiffRisk({
-    guardrails: input.guardrails,
+    guardrails,
     diff_text: input.diff_text,
     changed_files: input.changed_files,
     codex_summary: input.codex_summary
   });
-  const touchedForbidden = forbiddenTouched(changes.all_files, input.guardrails.forbidden_files);
+  const touchedForbidden = forbiddenTouched(changes.all_files, guardrails.forbidden_files);
   const touchedAllowed = changes.all_files.filter(
-    (file) => input.guardrails.allowed_files.some((pattern) => matchesPathPattern2(file, pattern))
+    (file) => guardrails.allowed_files.some((pattern) => matchesPathPattern2(file, pattern))
   );
   const outOfScope = changes.all_files.filter(
-    (file) => input.guardrails.allowed_files.length > 0 && !input.guardrails.allowed_files.some((pattern) => matchesPathPattern2(file, pattern)) && !touchedForbidden.includes(file)
+    (file) => guardrails.allowed_files.length > 0 && !guardrails.allowed_files.some((pattern) => matchesPathPattern2(file, pattern)) && !touchedForbidden.includes(file)
   );
-  const missingRequiredTests = risk.missing_tests.length > 0 ? input.guardrails.required_tests : [];
+  const missingRequiredTests = risk.missing_tests.length > 0 ? guardrails.required_tests : [];
   const violations = uniqueStrings([
     ...touchedForbidden.map((file) => `Forbidden file touched: ${file}`),
     ...risk.dangerous_commands.map((item) => `Dangerous command: ${item}`),
@@ -20180,7 +20426,7 @@ async function validateChanges(input, _memoryStore) {
   ]);
   const finalVerdict2 = violations.some((violation) => /dangerous|secret|deleted/i.test(violation)) ? "blocked" : violations.length > 0 ? "needs_fix" : warnings3.length > 0 ? "pass_with_warnings" : "pass";
   return {
-    guardrail_id: input.guardrails.guardrail_id,
+    guardrail_id: guardrails.guardrail_id,
     validation_passed: finalVerdict2 === "pass",
     violations,
     warnings: warnings3,
@@ -20189,6 +20435,21 @@ async function validateChanges(input, _memoryStore) {
     missing_required_tests: uniqueStrings(missingRequiredTests),
     final_verdict: finalVerdict2,
     repair_suggestion: repairSuggestion(violations, warnings3)
+  };
+}
+function missingGuardrailsValidation() {
+  return {
+    guardrail_id: "missing-guardrails",
+    validation_passed: false,
+    violations: ["Missing required CodeDNA input: guardrails."],
+    warnings: [
+      "Run codedna_parse_requirement, codedna_reverse_analyze, codedna_pair_strands, and codedna_generate_guardrails before validating changes."
+    ],
+    touched_allowed_files: [],
+    touched_forbidden_files: [],
+    missing_required_tests: [],
+    final_verdict: "blocked",
+    repair_suggestion: "Cannot validate changes without CodeDNA guardrails. Call codedna_generate_guardrails with the Requirement Strand and Analysis Strand, then call codedna_validate_changes again with the generated guardrails."
   };
 }
 function repairSuggestion(violations, warnings3) {
@@ -20311,31 +20572,31 @@ Fix only the issues identified by CodeDNA review. Do not reimplement the entire 
 
 ## Issues To Fix
 
-${bullets2(input.issues)}
+${bullets3(input.issues)}
 
 ## Files Allowed
 
-${bullets2(input.filesAllowed)}
+${bullets3(input.filesAllowed)}
 
 ## Files Forbidden
 
-${bullets2(input.filesForbidden)}
+${bullets3(input.filesForbidden)}
 
 ## Step By Step Fix Plan
 
-${numbered2(input.plan)}
+${numbered3(input.plan)}
 
 ## Tests Required
 
-${bullets2(input.testsRequired)}
+${bullets3(input.testsRequired)}
 
 ## Safety Rules
 
-${bullets2(input.safetyRules)}
+${bullets3(input.safetyRules)}
 
 ## Rollback Notes
 
-${bullets2(input.rollbackNotes)}
+${bullets3(input.rollbackNotes)}
 
 ## Final Response Format
 
@@ -20357,10 +20618,10 @@ Verification:
 Remaining Risks:
 - <risk or None>`;
 }
-function bullets2(items) {
+function bullets3(items) {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : "- None";
 }
-function numbered2(items) {
+function numbered3(items) {
   return items.length ? items.map((item, index) => `${index + 1}. ${item}`).join("\n") : "1. No repair steps generated.";
 }
 
@@ -20641,38 +20902,38 @@ ${input.requirement_strand.original_request}
 
 ## Manual Test Steps
 
-${bullets3(plan.manual_test_steps)}
+${bullets4(plan.manual_test_steps)}
 
 ## Automated Test Suggestions
 
-${bullets3(plan.automated_test_suggestions)}
+${bullets4(plan.automated_test_suggestions)}
 
 ## Edge Cases
 
-${bullets3(plan.edge_cases)}
+${bullets4(plan.edge_cases)}
 
 ## Failure Cases
 
-${bullets3(plan.failure_cases)}
+${bullets4(plan.failure_cases)}
 
 ## Regression Scope
 
-${bullets3(plan.regression_scope)}
+${bullets4(plan.regression_scope)}
 
 ## Required Commands
 
-${bullets3(plan.required_commands)}
+${bullets4(plan.required_commands)}
 
 ## Acceptance Checklist
 
-${bullets3(plan.acceptance_checklist)}
+${bullets4(plan.acceptance_checklist)}
 
 ## Missing Test Warning
 
 ${plan.missing_test_warning || "None"}
 `;
 }
-function bullets3(items) {
+function bullets4(items) {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : "- None";
 }
 

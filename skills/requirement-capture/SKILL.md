@@ -51,7 +51,7 @@ A Requirement Strand with `original_request`, `core_goal`, `features`, `constrai
 1. Preserve the user request exactly.
 2. Load memory rules when available.
 3. Pass project profile when available.
-4. If a project path is known but no profile exists, ask orchestrator to run `codedna_run_full_workflow` or `codedna_scan_project`.
+4. If a project path is known but no profile exists, ask orchestrator to run `codedna_scan_project`; reserve `codedna_run_full_workflow` for explicit one-shot diagnostics.
 5. If the request contains a preference, call `codedna_propose_memory_update` after parsing rather than writing long-term memory directly.
 6. Call `codedna_parse_requirement`.
 7. Review `unknowns`; if they are important, carry them into pairing and the task pack.
@@ -59,7 +59,6 @@ A Requirement Strand with `original_request`, `core_goal`, `features`, `constrai
 ## mcp_tools_to_call
 
 - `codedna_load_memory` when memory context is needed.
-- `codedna_run_full_workflow` for complex requests that should proceed through the full workflow.
 - `codedna_parse_requirement`.
 - `codedna_propose_memory_update` when the request expresses a preference.
 
@@ -76,7 +75,7 @@ A Requirement Strand with `original_request`, `core_goal`, `features`, `constrai
 ## failure_handling
 
 - If the request is empty, ask for the actual task.
-- If the target project is unknown, keep a project-scan unknown and recommend project scan or full workflow.
+- If the target project is unknown, keep a project-scan unknown and recommend `codedna_scan_project`.
 - If acceptance criteria are absent, let the parser generate conservative defaults.
 
 ## example_user_request

@@ -1,17 +1,24 @@
 import { sanitizeFilename, timestampedName } from "../storage/jsonStore.js";
 import { inferEffectFamilies, loadCaseLibrary, recallCases } from "../caseLibrary/caseLibrary.js";
 export async function reviewCodexOutput(input, memoryStore) {
+    const missingInputs = missingReviewInputs(input);
+    if (missingInputs.length > 0) {
+        return missingReviewInputReport(input, missingInputs, memoryStore);
+    }
+    const requirement = input.requirement_strand;
+    const analysis = input.analysis_strand;
     const modifiedFiles = modifiedFilesFromText(input.codex_output);
     const deletedFiles = deletedFilesFromText(input.codex_output);
-    const checks = reviewChecks(input, modifiedFiles, deletedFiles);
+    const completeInput = { ...input, requirement_strand: requirement, analysis_strand: analysis };
+    const checks = reviewChecks(completeInput, modifiedFiles, deletedFiles);
     const verdict = finalVerdict(checks);
-    const nextPrompt = nextFixPrompt(input.requirement_strand, checks);
-    const reviewId = artifactId("codedna-review", input.requirement_strand.created_at, input.requirement_strand.core_goal);
-    const caseRecall = await reviewCaseRecall(input);
-    const markdown = renderReview(input, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
+    const nextPrompt = nextFixPrompt(requirement, checks);
+    const reviewId = artifactId("codedna-review", requirement.created_at, requirement.core_goal);
+    const caseRecall = await reviewCaseRecall(completeInput);
+    const markdown = renderReview(completeInput, reviewId, verdict, checks, modifiedFiles, nextPrompt, caseRecall);
     let artifactPath;
     if (input.save !== false) {
-        artifactPath = await memoryStore.saveMarkdown(`reviews/${timestampedName(input.requirement_strand.core_goal, ".review.md")}`, markdown);
+        artifactPath = await memoryStore.saveMarkdown(`reviews/${timestampedName(requirement.core_goal, ".review.md")}`, markdown);
     }
     return {
         review_report: {
@@ -21,6 +28,78 @@ export async function reviewCodexOutput(input, memoryStore) {
             modified_files: modifiedFiles,
             markdown,
             next_codex_fix_prompt: nextPrompt
+        },
+        artifact_path: artifactPath
+    };
+}
+function missingReviewInputs(input) {
+    const missing = [];
+    if (!input.requirement_strand) {
+        missing.push("requirement_strand");
+    }
+    if (!input.analysis_strand) {
+        missing.push("analysis_strand");
+    }
+    if (!input.codex_output) {
+        missing.push("codex_output");
+    }
+    return missing;
+}
+async function missingReviewInputReport(input, missingInputs, memoryStore) {
+    const reviewId = artifactId("codedna-review-missing-input", new Date().toISOString(), missingInputs.join("-"));
+    const nextPrompt = [
+        "Cannot run CodeDNA review because required workflow inputs are missing.",
+        "",
+        "Recover by running the CodeDNA workflow in order:",
+        "1. codedna_parse_requirement with the original user request.",
+        "2. codedna_reverse_analyze with the Requirement Strand.",
+        "3. codedna_pair_strands with the Requirement and Analysis strands.",
+        "4. codedna_review_output with requirement_strand, analysis_strand, and codex_output.",
+        "",
+        `Missing inputs: ${missingInputs.join(", ")}`
+    ].join("\n");
+    const markdown = [
+        "# CodeDNA Review Recovery Report",
+        "",
+        `Review ID: ${reviewId}`,
+        "",
+        "## Status",
+        "",
+        "- Final Verdict: blocked",
+        "- Error Type: missing_required_input",
+        `- Missing Inputs: ${missingInputs.join(", ")}`,
+        "",
+        "## Codex Output Received",
+        "",
+        codexOutputSummary(input.codex_output ?? ""),
+        "",
+        "## Recovery Prompt",
+        "",
+        "```markdown",
+        nextPrompt,
+        "```"
+    ].join("\n");
+    let artifactPath;
+    if (input.save !== false) {
+        artifactPath = await memoryStore.saveMarkdown(`reviews/${timestampedName("missing-review-input", ".review.md")}`, markdown);
+    }
+    return {
+        review_report: {
+            review_id: reviewId,
+            verdict: "blocked",
+            checks: [
+                {
+                    name: "Missing Required Input",
+                    status: "fail",
+                    detail: `Missing inputs: ${missingInputs.join(", ")}`,
+                    severity: "high"
+                }
+            ],
+            modified_files: modifiedFilesFromText(input.codex_output ?? ""),
+            markdown,
+            next_codex_fix_prompt: nextPrompt,
+            error_type: "missing_required_input",
+            missing_inputs: missingInputs
         },
         artifact_path: artifactPath
     };
@@ -37,7 +116,7 @@ async function reviewCaseRecall(input) {
         input.codex_output
     ].join("\n");
     const library = await loadCaseLibrary();
-    return recallCases(library, query, inferEffectFamilies(query));
+    return recallCases(library, query, inferEffectFamilies(query), 2);
 }
 function modifiedFilesFromText(text) {
     const files = new Set();
@@ -353,8 +432,13 @@ function recalledCases(items) {
         return "- None";
     }
     return items
-        .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${item.codedna_pattern} Guardrail: ${item.guardrail}`)
+        .slice(0, 2)
+        .map((item) => `- **${item.id}** (${item.outcome}, score ${item.score}): ${compactText(item.codedna_pattern)} Guardrail: ${compactText(item.guardrail)}`)
         .join("\n");
+}
+function compactText(value, limit = 150) {
+    const normalized = value.replace(/\s+/g, " ").trim();
+    return normalized.length > limit ? `${normalized.slice(0, limit - 1)}...` : normalized;
 }
 function memoryEvolutionProposal(verdict, requiredFixes) {
     if (verdict === "pass") {

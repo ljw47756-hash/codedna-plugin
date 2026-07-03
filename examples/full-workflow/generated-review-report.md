@@ -1,6 +1,6 @@
 # CodeDNA Review Report
 
-Review ID: codedna-review-20260616T020236Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style
+Review ID: codedna-review-20260703T000235Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style
 
 ## CodeDNA Reverse Chain
 
@@ -119,15 +119,11 @@ Add a login page for the existing app with a dark minimal visual style. Support 
 
 - **retained-failure-0050-faae88cb7b** (failure-pattern, score 9): Failure path to prevent: ignore guardrails, diff safety, and risk scoring and proceed without the matching CodeDNA gate. Guardrail: Block or warn on unrelated edits, secrets, destructive commands, unsafe file paths, and extra features.
 - **retained-failure-0016-18468df630** (failure-pattern, score 8.95): Failure path to prevent: ignore diff review, repair prompt, and outcome scoring and proceed without the matching CodeDNA gate. Guardrail: Repair prompts must be constrained to the unmet requirement and avoid unrelated refactors.
-- **retained-failure-0011-969a5695cc** (failure-pattern, score 8.25): Failure path to prevent: ignore Project Genome and scan diagnostics and proceed without the matching CodeDNA gate. Guardrail: Project context should inform task packs and reviews without turning CodeDNA into an editor layer.
-- **retained-failure-0003-3f57c2d66d** (failure-pattern, score 7.6): Failure path to prevent: ignore review context and PR-ready summaries and proceed without the matching CodeDNA gate. Guardrail: Do not automate GitHub actions from core CodeDNA; report context and let the user decide.
 
 ## Relevant Success Patterns
 
 - **retained-success-0050-32e341a250** (success-pattern, score 10.1): Successful path: Turn safety and permission concepts into scoped forbidden actions, sensitive paths, and review warnings. Guardrail: Block or warn on unrelated edits, secrets, destructive commands, unsafe file paths, and extra features.
 - **retained-success-0016-9df9e4cbc6** (success-pattern, score 10.05): Successful path: Review output against requirements, constraints, risk, tests, and generate a narrow repair task when needed. Guardrail: Repair prompts must be constrained to the unmet requirement and avoid unrelated refactors.
-- **retained-success-0011-9fc1d341b6** (success-pattern, score 9.7): Successful path: Scan framework, entrypoints, dependency files, tests, generated folders, no-touch zones, and risk signals. Guardrail: Project context should inform task packs and reviews without turning CodeDNA into an editor layer.
-- **retained-success-0003-a232e05261** (success-pattern, score 8.35): Successful path: Surface branch, dirty tree, release, PR summary, and review cautions as contextual warnings. Guardrail: Do not automate GitHub actions from core CodeDNA; report context and let the user decide.
 
 ## Memory Evolution Proposal
 

@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { uniqueStrings } from "./common.js";
 import { buildProjectGenome } from "./buildProjectGenome.js";
+import { compileCodexExecutionBrief } from "./codexBrief.js";
 import { generateTaskPack } from "./generateTaskPack.js";
 import { pairStrands } from "./pairStrands.js";
 import { parseRequirement } from "./parseRequirement.js";
@@ -52,6 +53,12 @@ export async function runFullWorkflow(input, memoryStore) {
     }, memoryStore);
     const highRisk = highRiskRequest(request);
     const pairingResult = adjustedPairing(paired.pairing_result, highRisk);
+    const codexExecutionBrief = compileCodexExecutionBrief({
+        requirement: parsed.requirement_strand,
+        analysis: analysis.analysis_strand,
+        pairing: pairingResult,
+        project_profile: projectProfile
+    });
     warnings.push(...parsed.warnings, ...analysis.warnings, ...pairingResult.warnings);
     warnings.push(...highRisk.warnings);
     let taskPackPath;
@@ -71,6 +78,7 @@ export async function runFullWorkflow(input, memoryStore) {
         project_profile: projectProfile,
         project_genome: projectGenome,
         task_pack_path: taskPackPath,
+        codex_execution_brief: codexExecutionBrief,
         next_action: nextAction(pairingResult, mode),
         clarification_questions: clarificationQuestions(pairingResult, warnings, parsed.requirement_strand, analysis.analysis_strand),
         warnings: uniqueStrings(warnings)

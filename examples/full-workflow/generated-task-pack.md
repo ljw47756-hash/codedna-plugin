@@ -1,6 +1,6 @@
 # Codex Task Pack
 
-Task ID: codedna-task-20260616T020236Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style
+Task ID: codedna-task-20260703T000235Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style
 
 ## Execution Gate
 
@@ -34,6 +34,61 @@ Codex 任务包
 - Evolution Layer: Memory Evolution
 - Gate Status: ready
 
+## Codex Execution Brief
+
+# Codex Execution Brief
+
+Objective: Add a login page for the existing app with a dark minimal visual style
+Mode: full
+Intent Type: implementation
+
+Allowed Scope:
+- .agents
+- .codedna
+- .codex-plugin
+- assets
+- case-library
+- data
+- docs
+- examples
+- Requirement handling
+- Implementation planning
+- Verification
+- Completion summary
+
+Do Not:
+- Do not modify unrelated files
+- Do not broaden scope or perform unrelated refactors.
+- Do not add hardcoded secrets, tokens, API keys, personal paths, or local runtime data.
+- Do not modify dependency lockfiles, environment files, or generated output unless explicitly required.
+- .git/
+- .venv/
+- __pycache__/
+- build/
+- dist/
+- mcp-server/package-lock.json
+
+Execution:
+1. Read the target files and identify existing patterns before editing.
+2. Focus initial edits on: .agents, .codedna, .codex-plugin, assets, case-library, data, docs, examples
+3. Check constraints before editing: Do not modify unrelated files; Preserve the existing project structure
+4. Implement the smallest coherent change that satisfies the feature request.
+5. Update or add tests only around changed behavior.
+6. Run verification and summarize exact results.
+
+Verification:
+- Run the existing automated tests when available.
+- Perform focused manual checks for the requested behavior.
+- Confirm every constraint and non-goal remains respected.
+- Verify acceptance criterion: verification-code login
+- Verify acceptance criterion: Run the available test or build command after completion
+- Verify acceptance: verification-code login
+- Verify acceptance: Run the available test or build command after completion
+- Verify acceptance: summarize the verification result
+
+Review Gate:
+- After editing, provide changed files, verification evidence, and residual risks so CodeDNA can review the diff.
+
 ## Score Evidence
 
 - Base double-strand pairing score: 92.
@@ -49,24 +104,16 @@ Codex 任务包
 - **task-decomposition-not-runtime-agents** -> Feature <-> Module (weight 13.64): Split work into modules, risks, tests, affected files, and steps without adding a multi-agent runtime. Guardrail: Do not create runtime agents; preserve the decomposition effect inside CodeDNA analysis and task packs.
 - **guardrails-and-risk-control** -> Constraint <-> Risk (weight 14.17): Turn safety and permission concepts into scoped forbidden actions, sensitive paths, and review warnings. Guardrail: Block or warn on unrelated edits, secrets, destructive commands, unsafe file paths, and extra features.
 - **task-lifecycle-and-case-records** -> Memory <-> Reuse (weight 13.87): Record task phases, generated artifacts, review result, repair link, and outcome score for future recall. Guardrail: Store auditable case metadata instead of creating a separate task runner or autonomous runtime.
-- **documentation-and-operational-clarity** -> Acceptance <-> Test (weight 12.94): Document install, usage, suitable tasks, troubleshooting, and outcome summaries without exposing private internals. Guardrail: Public docs must describe user value and safe usage, not detailed proprietary implementation recipes.
-- **git-and-pr-awareness** -> Constraint <-> Risk (weight 11.89): Surface branch, dirty tree, release, PR summary, and review cautions as contextual warnings. Guardrail: Do not automate GitHub actions from core CodeDNA; report context and let the user decide.
-- **clear-user-feedback** -> Preference <-> Pattern (weight 11.66): Explain what happened, why it matters, what is blocked, and the next safe action in concise Markdown/JSON. Guardrail: Every blocked, cautious, or failed result needs a concrete next step and recovery prompt.
-- **plugin-installation-diagnostics** -> Constraint <-> Risk (weight 11.77): Check manifest, marketplace path, bundled dist, skills, version cache, and install instructions. Guardrail: Do not claim install readiness unless plugin manifest, marketplace entry, MCP entrypoint, and dist are present.
 
 ## Relevant Success Patterns
 
 - **retained-success-0006-58d28699fc** (success-pattern, score 16.15): Successful path: Detect task intent, stop conditions, correction directives, and continuation gates before execution. Guardrail: Do not execute implementation when the request is plan-only, review-only, phased, or correction-first.
 - **retained-success-0016-9df9e4cbc6** (success-pattern, score 14.5): Successful path: Review output against requirements, constraints, risk, tests, and generate a narrow repair task when needed. Guardrail: Repair prompts must be constrained to the unmet requirement and avoid unrelated refactors.
-- **retained-success-0001-f87bce4f2e** (success-pattern, score 14.4): Successful path: Split work into modules, risks, tests, affected files, and steps without adding a multi-agent runtime. Guardrail: Do not create runtime agents; preserve the decomposition effect inside CodeDNA analysis and task packs.
-- **retained-success-0011-9fc1d341b6** (success-pattern, score 13.65): Successful path: Scan framework, entrypoints, dependency files, tests, generated folders, no-touch zones, and risk signals. Guardrail: Project context should inform task packs and reviews without turning CodeDNA into an editor layer.
 
 ## Relevant Failure Patterns
 
 - **retained-failure-0006-6887a40704** (failure-pattern, score 14.9): Failure path to prevent: ignore Requirement Strand mode detection and task pack gates and proceed without the matching CodeDNA gate. Guardrail: Do not execute implementation when the request is plan-only, review-only, phased, or correction-first.
 - **retained-failure-0005-64430e16af** (failure-pattern, score 11.75): Failure path to prevent: ignore plugin install health and release checks and proceed without the matching CodeDNA gate. Guardrail: Do not claim install readiness unless plugin manifest, marketplace entry, MCP entrypoint, and dist are present.
-- **retained-failure-0001-1d735fe0ae** (failure-pattern, score 11.55): Failure path to prevent: ignore Analysis Strand decomposition and proceed without the matching CodeDNA gate. Guardrail: Do not create runtime agents; preserve the decomposition effect inside CodeDNA analysis and task packs.
-- **retained-failure-0016-18468df630** (failure-pattern, score 11.5): Failure path to prevent: ignore diff review, repair prompt, and outcome scoring and proceed without the matching CodeDNA gate. Guardrail: Repair prompts must be constrained to the unmet requirement and avoid unrelated refactors.
 
 ## Codex Assistance Handoff
 
@@ -74,7 +121,16 @@ Codex 任务包
 - **Pairing Review**: Judge whether Requirement and Analysis are aligned enough for execution. Prompt: Use pairing_score, unmatched_pairs, missing_information, activated_effects, and case_recall to decide full, cautious, or blocked execution. Expected output: A go, cautious-go, or clarification decision with reasons.
 - **Codex Task Pack**: Turn the paired DNA strands into a concrete implementation brief. Prompt: Follow the task pack exactly: scope, files, steps, risks, tests, and final response format. Expected output: A scoped implementation plan or edit set with verification evidence.
 - **Reverse Review**: Inspect the result against the original request and guardrails. Prompt: Compare the diff or output against Requirement Strand, forbidden scope, risks, tests, and relevant failure patterns. Expected output: A pass, warning, needs-fix, or blocked verdict plus a repair prompt if needed.
-- **Memory Evolution**: Propose learning without silently writing long-term memory. Prompt: Only propose memory updates from confirmed preferences, repeated successful patterns, or rejected patterns; wait for user confirmation. Expected output: A memory proposal or no-memory-needed decision.
+
+## Codex Execution Mode
+
+- Mode: full scoped execution.
+- Codex should inspect the existing project first, apply only the scoped edits, run or explain verification, and then review the diff against this task pack.
+- If verification fails, Codex should stop and generate a focused repair task rather than widening scope.
+
+## Next Codex Prompt
+
+Use Codex to implement "Add a login page for the existing app with a dark minimal visual style" within the allowed scope, then run the test plan and review the diff before reporting completion.
 
 ## Original User Request
 
@@ -109,19 +165,7 @@ Add a login page for the existing app with a dark minimal visual style. Support 
     "summarize the verification result"
   ],
   "unknowns": [],
-  "priority": "medium",
-  "user_memory_related_rules": [
-    "Use CodeDNA pairing before large Codex edits.",
-    "Generate a Codex Task Pack before implementation.",
-    "Review Codex output against constraints before accepting changes.",
-    "Use MCP client smoke before publishing CodeDNA updates.",
-    "Avoid: incomplete mock implementations",
-    "Avoid: unrelated refactors",
-    "Avoid: desktop-app scaffolding when a Codex plugin is requested",
-    "Avoid: single-file monoliths",
-    "Preferred UI style: dark, minimal, technical"
-  ],
-  "created_at": "2026-06-16T02:02:36.223Z"
+  "priority": "medium"
 }
 ```
 
@@ -145,14 +189,7 @@ Add a login page for the existing app with a dark minimal visual style. Support 
     "CLI command entrypoint",
     "Helper script module",
     "UI component",
-    "Style layer",
-    "Authentication flow",
-    "Form validation",
-    "Security review",
-    "Test planner",
-    "Verification runner plan",
-    "Checklist coverage tracker",
-    "Scope coverage verifier"
+    "Style layer"
   ],
   "affected_files": [
     ".agents",
@@ -199,14 +236,13 @@ Add a login page for the existing app with a dark minimal visual style. Support 
     "Codex will inspect files before editing them.",
     "The user wants scoped changes rather than broad refactors.",
     "The selected project root is E:\\chat-codex\\CodeDNA\\codedna-plugin."
-  ],
-  "created_at": "2026-06-16T02:02:36.226Z"
+  ]
 }
 ```
 
 ## Project Profile Summary
 
-- Project path: <PROJECT_ROOT>
+- Project path: E:\chat-codex\CodeDNA\codedna-plugin
 - Languages: TypeScript
 - Frameworks: none detected
 - Package manager: npm
@@ -275,7 +311,7 @@ Add a login page for the existing app with a dark minimal visual style. Support 
 
 - Codex will inspect files before editing them.
 - The user wants scoped changes rather than broad refactors.
-- The selected project root is <PROJECT_ROOT>.
+- The selected project root is E:\chat-codex\CodeDNA\codedna-plugin.
 
 ## Acceptance Criteria
 

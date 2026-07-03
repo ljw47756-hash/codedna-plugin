@@ -1,19 +1,23 @@
 import { analyzeDiffRisk, forbiddenTouched, matchesPathPattern, parseChangeSet } from "./diffSafety.js";
 import { uniqueStrings } from "./common.js";
 export async function validateChanges(input, _memoryStore) {
+    if (!input.guardrails) {
+        return missingGuardrailsValidation();
+    }
+    const guardrails = input.guardrails;
     const changes = parseChangeSet(input.diff_text ?? "", input.changed_files ?? []);
     const risk = analyzeDiffRisk({
-        guardrails: input.guardrails,
+        guardrails,
         diff_text: input.diff_text,
         changed_files: input.changed_files,
         codex_summary: input.codex_summary
     });
-    const touchedForbidden = forbiddenTouched(changes.all_files, input.guardrails.forbidden_files);
-    const touchedAllowed = changes.all_files.filter((file) => input.guardrails.allowed_files.some((pattern) => matchesPathPattern(file, pattern)));
-    const outOfScope = changes.all_files.filter((file) => input.guardrails.allowed_files.length > 0 &&
-        !input.guardrails.allowed_files.some((pattern) => matchesPathPattern(file, pattern)) &&
+    const touchedForbidden = forbiddenTouched(changes.all_files, guardrails.forbidden_files);
+    const touchedAllowed = changes.all_files.filter((file) => guardrails.allowed_files.some((pattern) => matchesPathPattern(file, pattern)));
+    const outOfScope = changes.all_files.filter((file) => guardrails.allowed_files.length > 0 &&
+        !guardrails.allowed_files.some((pattern) => matchesPathPattern(file, pattern)) &&
         !touchedForbidden.includes(file));
-    const missingRequiredTests = risk.missing_tests.length > 0 ? input.guardrails.required_tests : [];
+    const missingRequiredTests = risk.missing_tests.length > 0 ? guardrails.required_tests : [];
     const violations = uniqueStrings([
         ...touchedForbidden.map((file) => `Forbidden file touched: ${file}`),
         ...risk.dangerous_commands.map((item) => `Dangerous command: ${item}`),
@@ -35,7 +39,7 @@ export async function validateChanges(input, _memoryStore) {
                 ? "pass_with_warnings"
                 : "pass";
     return {
-        guardrail_id: input.guardrails.guardrail_id,
+        guardrail_id: guardrails.guardrail_id,
         validation_passed: finalVerdict === "pass",
         violations,
         warnings,
@@ -44,6 +48,21 @@ export async function validateChanges(input, _memoryStore) {
         missing_required_tests: uniqueStrings(missingRequiredTests),
         final_verdict: finalVerdict,
         repair_suggestion: repairSuggestion(violations, warnings)
+    };
+}
+function missingGuardrailsValidation() {
+    return {
+        guardrail_id: "missing-guardrails",
+        validation_passed: false,
+        violations: ["Missing required CodeDNA input: guardrails."],
+        warnings: [
+            "Run codedna_parse_requirement, codedna_reverse_analyze, codedna_pair_strands, and codedna_generate_guardrails before validating changes."
+        ],
+        touched_allowed_files: [],
+        touched_forbidden_files: [],
+        missing_required_tests: [],
+        final_verdict: "blocked",
+        repair_suggestion: "Cannot validate changes without CodeDNA guardrails. Call codedna_generate_guardrails with the Requirement Strand and Analysis Strand, then call codedna_validate_changes again with the generated guardrails."
     };
 }
 function repairSuggestion(violations, warnings) {

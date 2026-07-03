@@ -8,6 +8,7 @@ import { parseRequirement } from "../src/tools/parseRequirement.js";
 import { reverseAnalyze } from "../src/tools/reverseAnalyze.js";
 import { reviewCodexOutput } from "../src/tools/reviewCodexOutput.js";
 import { scanProject } from "../src/tools/scanProject.js";
+import { validateChanges } from "../src/tools/validateChanges.js";
 
 async function withWorkspace<T>(fn: (workspace: string, memory: MemoryStore) => Promise<T>): Promise<T> {
   const workspace = await mkdtemp(join(tmpdir(), "codedna-review-safety-"));
@@ -104,5 +105,70 @@ test("review can pass with warnings when only non-blocking concerns are present"
 
     assert.equal(review.review_report.verdict, "pass_with_warnings");
     assert.match(review.review_report.markdown, /Test Gaps/);
+  });
+});
+
+test("review and validation return structured recovery guidance when workflow inputs are missing", async () => {
+  await withWorkspace(async (_workspace, memory) => {
+    const review = await reviewCodexOutput(
+      {
+        codex_output: "modified: README.md"
+      } as never,
+      memory
+    );
+
+    assert.equal(review.review_report.verdict, "blocked");
+    assert.equal(review.review_report.error_type, "missing_required_input");
+    assert.ok(review.review_report.missing_inputs.includes("requirement_strand"));
+    assert.ok(review.review_report.missing_inputs.includes("analysis_strand"));
+    assert.match(review.review_report.next_codex_fix_prompt, /codedna_parse_requirement/);
+
+    const validation = await validateChanges(
+      {
+        changed_files: ["README.md"],
+        codex_summary: "Updated docs."
+      } as never,
+      memory
+    );
+
+    assert.equal(validation.final_verdict, "blocked");
+    assert.equal(validation.validation_passed, false);
+    assert.ok(validation.violations.some((item) => /Missing required CodeDNA input: guardrails/.test(item)));
+    assert.match(validation.repair_suggestion, /codedna_generate_guardrails/);
+  });
+});
+
+test("review report keeps recalled cases compact by default", async () => {
+  await withWorkspace(async (workspace, memory) => {
+    const profile = (await scanProject({ project_path: await project(workspace) }, memory)).project_profile;
+    const requirement = (await parseRequirement(
+      {
+        request: "Review docs update. Do not expose internal implementation details. Run a docs check.",
+        project_profile: profile,
+        save: false
+      },
+      memory
+    )).requirement_strand;
+    const analysis = (await reverseAnalyze({ requirement_strand: requirement, project_profile: profile, save: false }, memory)).analysis_strand;
+    const review = await reviewCodexOutput(
+      {
+        requirement_strand: requirement,
+        analysis_strand: analysis,
+        project_profile: profile,
+        save: false,
+        codex_output: [
+          "Summary:",
+          "- Updated README.md with docs wording.",
+          "Verification:",
+          "- docs check passed.",
+          "Assumption:",
+          "- Public docs only."
+        ].join("\n")
+      },
+      memory
+    );
+
+    assert.ok((review.review_report.markdown.match(/retained-failure-/g) ?? []).length <= 2);
+    assert.ok((review.review_report.markdown.match(/retained-success-/g) ?? []).length <= 2);
   });
 });
