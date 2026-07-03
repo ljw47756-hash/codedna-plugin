@@ -1,6 +1,6 @@
 ---
 name: codedna-orchestrator
-description: "Use when a coding request is complex enough to prepare through CodeDNA before editing: project scan, memory load, requirement capture, reverse analysis, pairing, task pack generation, and post-output review."
+description: "Use when CodeDNA is selected or when a coding request benefits from automatic CodeDNA routing before editing: requirement capture, reverse analysis, pairing, compact Codex brief, guardrails, review, and memory."
 ---
 
 # CodeDNA Orchestrator
@@ -30,14 +30,28 @@ CodeDNA does not replace Codex. The MCP tools produce structured strands, scores
 
 ## Token Efficiency Rule
 
-CodeDNA's primary job is to compile the user's natural-language request into a compact Codex Execution Brief: objective, intent type, allowed scope, hard constraints, execution steps, verification, and review gate. Do not paste full strands, full task packs, case-library details, or long internal reasoning into chat unless the user explicitly asks for them.
+CodeDNA's primary job is to compile the user's natural-language request into a compact Codex Execution Brief: objective, intent type, workflow route, allowed scope, hard constraints, execution steps, verification, and review gate. Do not paste full strands, full task packs, case-library details, or long internal reasoning into chat unless the user explicitly asks for them.
+
+## Automatic Routing Rule
+
+When the user has enabled, selected, or at-mentioned CodeDNA, do not require a special phrase such as "use full workflow". Treat the user's normal request as the input and route it by complexity:
+
+- `tiny` or `simple`: use the compact brief directly and avoid long artifacts unless persistence is useful.
+- `normal`: run requirement capture, reverse analysis, pairing, and the compact brief.
+- `complex`: add project scan or Project Genome, then produce guardrails before Codex edits.
+- `high_risk`: add Project Genome and guardrails, proceed cautiously, and require post-diff review.
+- `review_only`: review the supplied output, diff, logs, or summary; do not plan new implementation.
+- `plan_only`: produce analysis and risk/verification guidance only; do not edit files.
+- `blocked`: ask the missing clarification questions before Codex edits files.
+
+Fixed trigger phrases remain useful for smoke tests and documentation, but they are not required for normal use.
 
 ## Progress Display Rule
 
 Prefer staged MCP calls for normal work so Codex can show visible progress: scan, parse, analyze, pair, brief, guardrails, execute, review. Use `codedna_run_full_workflow` only for smoke tests, quick one-shot diagnostics, or when the user explicitly asks for a single full-workflow tool call. A long all-in-one MCP call can appear stuck on the first progress item even while it is running correctly.
 
 ## when_to_use
-Use this skill when the user asks for a feature, bug fix, refactor, multi-file change, architecture change, test plan, review, or any request that would benefit from a structured Codex Task Pack before implementation. Also use it when the user explicitly says CodeDNA, task pack, requirement strand, analysis strand, pairing, or plugin workflow.
+Use this skill when CodeDNA is the selected plugin and the user asks for a feature, bug fix, refactor, multi-file change, architecture change, test plan, review, or any request that would benefit from structured routing before implementation. Also use it when the user explicitly says CodeDNA, task pack, requirement strand, analysis strand, pairing, or plugin workflow.
 
 ## when_not_to_use
 
@@ -64,11 +78,12 @@ Do not use this skill for tiny factual questions, simple terminal lookups, or re
 3. Call `codedna_reverse_analyze` to translate the request into Codex-ready technical tasks, affected files, risks, and verification.
 4. Call `codedna_pair_strands` to decide whether execution is full, cautious, or blocked.
 5. If `pairing_score` is below 70, stop and ask only the generated clarification questions.
-6. If ready, call `codedna_generate_task_pack` when a saved artifact is useful, but use only its compact Codex Execution Brief as the implementation prompt by default.
-7. Before editing, call `codedna_generate_guardrails`; then Codex executes using the brief and guardrails, not the full internal workflow text.
-8. After Codex produces a diff, call `codedna_review_diff`; use `codedna_review_output` only when no diff is available.
-9. If review or validation fails, call `codedna_generate_repair_task` and use it as the next concise Codex prompt.
-10. If the user expresses a preference, call `codedna_propose_memory_update`; write durable memory only after confirmation.
+6. Read the `workflow_route` from the compact Codex Execution Brief and choose the smallest sufficient next step.
+7. If ready, call `codedna_generate_task_pack` when a saved artifact is useful, but use only its compact Codex Execution Brief as the implementation prompt by default.
+8. Before editing complex or high-risk routes, call `codedna_generate_guardrails`; then Codex executes using the brief and guardrails, not the full internal workflow text.
+9. After Codex produces a diff, call `codedna_review_diff`; use `codedna_review_output` only when no diff is available.
+10. If review or validation fails, call `codedna_generate_repair_task` and use it as the next concise Codex prompt.
+11. If the user expresses a preference, call `codedna_propose_memory_update`; write durable memory only after confirmation.
 
 ## mcp_tools_to_call
 

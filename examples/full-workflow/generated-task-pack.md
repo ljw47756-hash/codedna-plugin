@@ -1,6 +1,6 @@
 # Codex Task Pack
 
-Task ID: codedna-task-20260703T000235Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style
+Task ID: codedna-task-20260703T004948Z-Add-a-login-page-for-the-existing-app-with-a-dark-minimal-visual-style
 
 ## Execution Gate
 
@@ -41,6 +41,8 @@ Codex 任务包
 Objective: Add a login page for the existing app with a dark minimal visual style
 Mode: full
 Intent Type: implementation
+Route: high_risk
+Route Reason: The task touches protected files, security/privacy boundaries, dependencies, or hard constraints.
 
 Allowed Scope:
 - .agents
@@ -87,7 +89,7 @@ Verification:
 - Verify acceptance: summarize the verification result
 
 Review Gate:
-- After editing, provide changed files, verification evidence, and residual risks so CodeDNA can review the diff.
+- Generate guardrails first, keep the diff minimal, and provide changed files, verification evidence, and risk notes for CodeDNA review.
 
 ## Score Evidence
 
@@ -235,14 +237,14 @@ Add a login page for the existing app with a dark minimal visual style. Support 
   "assumptions": [
     "Codex will inspect files before editing them.",
     "The user wants scoped changes rather than broad refactors.",
-    "The selected project root is E:\\chat-codex\\CodeDNA\\codedna-plugin."
+    "The selected project root is <PROJECT_ROOT>."
   ]
 }
 ```
 
 ## Project Profile Summary
 
-- Project path: E:\chat-codex\CodeDNA\codedna-plugin
+- Project path: <PROJECT_ROOT>
 - Languages: TypeScript
 - Frameworks: none detected
 - Package manager: npm
@@ -311,7 +313,7 @@ Add a login page for the existing app with a dark minimal visual style. Support 
 
 - Codex will inspect files before editing them.
 - The user wants scoped changes rather than broad refactors.
-- The selected project root is E:\chat-codex\CodeDNA\codedna-plugin.
+- The selected project root is <PROJECT_ROOT>.
 
 ## Acceptance Criteria
 

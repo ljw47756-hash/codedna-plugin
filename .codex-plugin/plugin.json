@@ -1,6 +1,6 @@
 {
   "name": "codedna-plugin",
-  "version": "0.1.13+codex.20260703003000",
+  "version": "0.1.14+codex.20260703010000",
   "description": "CodeDNA helps Codex handle complex coding tasks through a double-strand planning, execution, review, and memory workflow.",
   "author": {
     "name": "CodeDNA",
@@ -36,9 +36,9 @@
     "privacyPolicyURL": "https://github.com/ljw47756-hash/codedna-plugin#privacy-and-data",
     "termsOfServiceURL": "https://github.com/ljw47756-hash/codedna-plugin/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use CodeDNA to prepare this coding task.",
-      "Generate a CodeDNA task pack for Codex.",
-      "Review this Codex result with CodeDNA."
+      "Fix this coding task with minimal, verified changes.",
+      "Analyze this request first and do not edit files yet.",
+      "Review this Codex result against my original request."
     ],
     "brandColor": "#38BDF8",
     "composerIcon": "./assets/icon.png",

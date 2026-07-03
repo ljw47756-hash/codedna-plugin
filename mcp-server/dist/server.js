@@ -18428,13 +18428,22 @@ function compileCodexExecutionBrief(input) {
   const executionSteps = executionStepsFor(input.analysis, input.pairing);
   const verification = verificationFor(input.analysis, input.requirement);
   const intentType = inferIntentType(input.requirement, input.analysis);
-  const reviewGate = executionMode === "blocked" ? "Do not edit files. Ask the missing clarification questions first." : "After editing, provide changed files, verification evidence, and residual risks so CodeDNA can review the diff.";
+  const route = routeWorkflow({
+    requirement: input.requirement,
+    analysis: input.analysis,
+    pairing: input.pairing,
+    project_profile: input.project_profile,
+    intent_type: intentType
+  });
+  const reviewGate = reviewGateFor(executionMode, route.workflow_route, intentType);
   const markdown = [
     "# Codex Execution Brief",
     "",
     `Objective: ${objective}`,
     `Mode: ${executionMode}`,
     `Intent Type: ${intentType}`,
+    `Route: ${route.workflow_route}`,
+    `Route Reason: ${route.route_reason}`,
     "",
     "Allowed Scope:",
     bullets(allowedScope),
@@ -18455,6 +18464,8 @@ function compileCodexExecutionBrief(input) {
     objective,
     execution_mode: executionMode,
     intent_type: intentType,
+    workflow_route: route.workflow_route,
+    route_reason: route.route_reason,
     allowed_scope: allowedScope,
     do_not: doNot,
     execution_steps: executionSteps,
@@ -18462,6 +18473,73 @@ function compileCodexExecutionBrief(input) {
     review_gate: reviewGate,
     markdown
   };
+}
+function routeWorkflow(input) {
+  if (input.intent_type === "review_only") {
+    return {
+      workflow_route: "review_only",
+      route_reason: "The request asks CodeDNA to inspect or review output instead of planning new implementation."
+    };
+  }
+  if (input.intent_type === "plan_only") {
+    return {
+      workflow_route: "plan_only",
+      route_reason: "The request explicitly asks for planning, analysis, or no file edits."
+    };
+  }
+  if (input.pairing.execution_level === "blocked" || !input.pairing.ready_for_codex || input.pairing.pairing_score < 70) {
+    return {
+      workflow_route: "blocked",
+      route_reason: "Pairing score or missing information blocks safe Codex execution."
+    };
+  }
+  if (input.pairing.execution_level === "cautious" || hasRiskyScope(input.requirement, input.analysis, input.project_profile)) {
+    return {
+      workflow_route: "high_risk",
+      route_reason: "The task touches protected files, security/privacy boundaries, dependencies, or hard constraints."
+    };
+  }
+  const complexity = complexityScore(input.requirement, input.analysis, input.project_profile);
+  if (complexity >= 5) {
+    return {
+      workflow_route: "complex",
+      route_reason: "The task likely spans several files, modules, risks, or verification steps."
+    };
+  }
+  if (isTinyTask(input.requirement, input.analysis, input.project_profile)) {
+    return {
+      workflow_route: "tiny",
+      route_reason: "The task is narrow enough for a direct compact Codex brief."
+    };
+  }
+  if (isSimpleTask(input.analysis)) {
+    return {
+      workflow_route: "simple",
+      route_reason: "The task is scoped to a small number of files and steps."
+    };
+  }
+  return {
+    workflow_route: "normal",
+    route_reason: "The task is ready for the standard Requirement-Strand to Analysis-Strand CodeDNA handoff."
+  };
+}
+function reviewGateFor(executionMode, workflowRoute, intentType) {
+  if (workflowRoute === "review_only") {
+    return "Do not implement new code. Review the provided diff, output, logs, or summary against the original request.";
+  }
+  if (workflowRoute === "plan_only") {
+    return "Do not edit files. Produce the plan, risks, assumptions, and verification strategy only.";
+  }
+  if (executionMode === "blocked" || workflowRoute === "blocked") {
+    return "Do not edit files. Ask the missing clarification questions first.";
+  }
+  if (workflowRoute === "high_risk") {
+    return "Generate guardrails first, keep the diff minimal, and provide changed files, verification evidence, and risk notes for CodeDNA review.";
+  }
+  if (intentType === "documentation" || workflowRoute === "tiny" || workflowRoute === "simple") {
+    return "After editing, provide changed files and concise verification evidence so CodeDNA can confirm the request was satisfied.";
+  }
+  return "After editing, provide changed files, verification evidence, and residual risks so CodeDNA can review the diff.";
 }
 function allowedScopeFor(analysis, projectProfile) {
   return uniqueStrings([
@@ -18499,20 +18577,65 @@ function verificationFor(analysis, requirement) {
     "If a command cannot be run, explain why and provide the closest manual verification."
   ]).slice(0, 8);
 }
+function hasRiskyScope(requirement, analysis, projectProfile) {
+  const text = [
+    requirement.original_request,
+    requirement.constraints.join("\n"),
+    requirement.preferences.join("\n"),
+    requirement.acceptance_criteria.join("\n"),
+    analysis.affected_files.join("\n"),
+    analysis.required_modules.join("\n"),
+    analysis.risks.join("\n"),
+    projectProfile?.dependency_files.join("\n") ?? "",
+    projectProfile?.config_files.join("\n") ?? ""
+  ].join("\n");
+  return /(\.env|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig\.json|vite\.config|next\.config|pyproject\.toml|api key|token|secret|password|privacy|security|dependency|lockfile|environment variable|不要公开|避免.*抄袭|密钥|令牌|隐私|安全|依赖|锁文件|环境变量|配置文件)/iu.test(
+    text
+  );
+}
+function complexityScore(requirement, analysis, projectProfile) {
+  const text = `${requirement.original_request}
+${analysis.technical_goal}
+${analysis.suggested_architecture.join("\n")}`;
+  let score2 = 0;
+  if (analysis.affected_files.length >= 5) score2 += 2;
+  else if (analysis.affected_files.length >= 3) score2 += 1;
+  if (analysis.required_modules.length >= 5) score2 += 2;
+  else if (analysis.required_modules.length >= 3) score2 += 1;
+  if (analysis.implementation_steps.length >= 6) score2 += 2;
+  else if (analysis.implementation_steps.length >= 4) score2 += 1;
+  if (analysis.risks.length >= 4) score2 += 1;
+  if (projectProfile && projectProfile.component_dirs.length + projectProfile.api_dirs.length + projectProfile.test_dirs.length >= 4) score2 += 1;
+  if (/(architecture|migration|multi-file|cross-module|refactor|workflow|complex|架构|迁移|多文件|跨模块|重构|流程|复杂|高难度)/iu.test(text)) {
+    score2 += 2;
+  }
+  return score2;
+}
+function isTinyTask(requirement, analysis, projectProfile) {
+  if (projectProfile) {
+    return false;
+  }
+  const text = `${requirement.original_request}
+${requirement.features.join("\n")}`;
+  return analysis.affected_files.length <= 1 && analysis.implementation_steps.length <= 2 && /(typo|copy|comment|readme line|one line|small text|错别字|文案|注释|一行|小改)/iu.test(text);
+}
+function isSimpleTask(analysis) {
+  return analysis.affected_files.length <= 2 && analysis.implementation_steps.length <= 3 && analysis.risks.length <= 2;
+}
 function inferIntentType(requirement, analysis) {
   const text = `${requirement.original_request}
 ${requirement.features.join("\n")}
 ${analysis.required_modules.join("\n")}`;
-  if (/(review-only|review only|审查|审核|只检查|只做检查)/iu.test(text)) {
+  if (/(review-only|review only|only review|audit only|inspect only|审查|审核|复核|只检查|只审查|只做检查|不要继续开发|不要新增功能)/iu.test(text)) {
     return "review_only";
   }
-  if (/(plan-only|plan only|只计划|只给方案|不要改代码|不要编辑文件)/iu.test(text)) {
+  if (/(plan-only|plan only|planning only|no edits|do not edit|do not change files|只计划|只给方案|只分析|不要改代码|不要改文件|不要编辑文件|先做方案)/iu.test(text)) {
     return "plan_only";
   }
-  if (/(repair|fix failure|修复|失败|报错)/iu.test(text)) {
+  if (/(repair|fix failure|fix|bug|failed|failure|error|修复|失败|报错|不通过|校验失败)/iu.test(text)) {
     return "repair";
   }
-  if (/(readme|docs|documentation|文档|说明)/iu.test(text)) {
+  if (/(readme|docs|documentation|文档|说明|教程)/iu.test(text)) {
     return "documentation";
   }
   if (requirement.features.length || analysis.implementation_steps.length) {

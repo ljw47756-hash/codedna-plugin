@@ -89,28 +89,30 @@ CodeDNA 是工具型插件，所以它通常会分散显示在两个位置：
 
 ## 常用触发方式
 
+启用或选择 CodeDNA 后，不需要强制输入固定口令。你可以直接写正常任务，CodeDNA 会根据 `workflow_route` 自动选择 `tiny`、`simple`、`normal`、`complex`、`high_risk`、`review_only`、`plan_only` 或 `blocked`。
+
 普通复杂任务：
 
 ```text
-Use CodeDNA for this task.
+修复登录验证码校验失败的问题，只能改登录相关文件，修完跑测试。
 ```
 
 先分析，不要立刻改文件：
 
 ```text
-Use CodeDNA. Analyze first and ask me before editing.
+先分析这个任务，不要改文件，给我执行方案和风险点。
 ```
 
 高风险任务或多文件任务：
 
 ```text
-Use CodeDNA full workflow before editing.
+需要修改 package.json 增加测试脚本，但不要碰 .env，先确认风险并保持最小改动。
 ```
 
 审查 Codex 已经完成的输出：
 
 ```text
-Use CodeDNA to review this output.
+只审查这个 diff，不要继续开发，检查是否有无关文件、架构风险和测试缺口。
 ```
 
 中文也可以直接说：
@@ -124,10 +126,8 @@ Use CodeDNA to review this output.
 新开一个 Codex 对话，输入：
 
 ```text
-Use CodeDNA staged workflow for this project and produce a compact Codex Execution Brief:
-C:\path\to\your\project
-
-Request:
+Project: C:\path\to\your\project
+Task:
 Add a short README quick start section, but do not edit files yet.
 ```
 

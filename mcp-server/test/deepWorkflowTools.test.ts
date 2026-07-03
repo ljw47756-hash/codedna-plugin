@@ -90,8 +90,10 @@ test("codedna_run_full_workflow generates a ready workflow and blocks vague exec
     assert.match(ready.task_pack_path ?? "", /data[\\/]+tasks/);
     assert.match(ready.codex_execution_brief.markdown, /Codex Execution Brief/);
     assert.match(ready.codex_execution_brief.markdown, /Objective:/);
+    assert.match(ready.codex_execution_brief.markdown, /Route:/);
     assert.match(ready.codex_execution_brief.markdown, /Do Not:/);
     assert.match(ready.codex_execution_brief.markdown, /Verification:/);
+    assert.ok(["normal", "complex", "high_risk"].includes(ready.codex_execution_brief.workflow_route));
     assert.ok(ready.codex_execution_brief.markdown.length < 2500);
     assert.doesNotMatch(ready.codex_execution_brief.markdown, /Relevant Success Patterns|Requirement Strand Summary|Analysis Strand Summary/);
 
@@ -111,6 +113,63 @@ test("codedna_run_full_workflow generates a ready workflow and blocks vague exec
     assert.equal(blocked.task_pack_path, undefined);
     assert.ok(blocked.clarification_questions.length > 0);
     assert.ok(blocked.warnings.some((warning) => /scan|project|missing/i.test(warning)));
+  });
+});
+
+test("codedna_run_full_workflow auto-routes normal Chinese requests without a special trigger phrase", async () => {
+  await withWorkspace(async (workspace, memory) => {
+    const projectPath = await createNextProject(workspace);
+    const workflow = await runFullWorkflow(
+      {
+        user_request: "修复登录验证码校验失败的问题，只能改登录相关文件，修完跑测试。",
+        project_path: projectPath,
+        mode: "plan_only",
+        use_project_genome: true,
+        use_memory: false
+      },
+      memory
+    );
+
+    assert.equal(workflow.codex_execution_brief.intent_type, "repair");
+    assert.ok(["normal", "complex", "high_risk"].includes(workflow.codex_execution_brief.workflow_route));
+    assert.notEqual(workflow.codex_execution_brief.workflow_route, "blocked");
+    assert.match(workflow.codex_execution_brief.markdown, /Codex Execution Brief/);
+    assert.match(workflow.codex_execution_brief.markdown, /Route:/);
+    assert.doesNotMatch(workflow.codex_execution_brief.markdown, /Use CodeDNA staged workflow|Use CodeDNA full workflow/);
+  });
+});
+
+test("codedna_run_full_workflow routes review-only and high-risk requests distinctly", async () => {
+  await withWorkspace(async (workspace, memory) => {
+    const projectPath = await createNextProject(workspace);
+    const reviewOnly = await runFullWorkflow(
+      {
+        user_request: "只审查这个 diff，不要继续开发，检查是否有无关文件和风险。",
+        mode: "plan_only",
+        use_project_genome: false,
+        use_memory: false
+      },
+      memory
+    );
+
+    assert.equal(reviewOnly.codex_execution_brief.intent_type, "review_only");
+    assert.equal(reviewOnly.codex_execution_brief.workflow_route, "review_only");
+    assert.match(reviewOnly.codex_execution_brief.markdown, /Route: review_only/);
+
+    const highRisk = await runFullWorkflow(
+      {
+        user_request: "修改 package.json 增加一个测试脚本，但不要碰 .env，必须先确认风险并保持最小改动。",
+        project_path: projectPath,
+        mode: "plan_only",
+        use_project_genome: true,
+        use_memory: false
+      },
+      memory
+    );
+
+    assert.equal(highRisk.codex_execution_brief.workflow_route, "high_risk");
+    assert.match(highRisk.codex_execution_brief.markdown, /Route: high_risk/);
+    assert.match(highRisk.codex_execution_brief.review_gate, /review|guardrail|risk/i);
   });
 });
 

@@ -46,7 +46,7 @@ Do not generate an execution brief for blocked tasks except as a clarification p
 
 ## output_expected
 
-Compact Codex Execution Brief first, with the full Markdown task pack saved under `data/tasks/` when persistence is useful. Guardrails and required tests are saved or returned separately.
+Compact Codex Execution Brief first, including `workflow_route`, with the full Markdown task pack saved under `data/tasks/` when persistence is useful. Guardrails and required tests are saved or returned separately.
 
 ## workflow_steps
 
@@ -55,7 +55,7 @@ Compact Codex Execution Brief first, with the full Markdown task pack saved unde
 3. Call `codedna_generate_task_pack`.
 4. If `pairing_score < 70`, present it as a blocked clarification pack and do not execute.
 5. If ready, call `codedna_generate_guardrails`.
-6. Use the task pack's `Codex Execution Brief` and guardrails as the Codex implementation contract; do not paste the whole task pack unless the user asks for it.
+6. Use the task pack's `Codex Execution Brief`, `workflow_route`, and guardrails as the Codex implementation contract; do not paste the whole task pack unless the user asks for it.
 7. After implementation, require a diff or changed-file summary for `codedna_review_diff`.
 
 ## mcp_tools_to_call
@@ -68,6 +68,7 @@ Compact Codex Execution Brief first, with the full Markdown task pack saved unde
 ## rules
 
 - Put the compact Codex Execution Brief before internal evidence sections.
+- Let the route control handoff depth: simple routes stay brief, complex and high-risk routes require guardrails and review.
 - Keep full Task ID, Pairing Score, Execution Level, Original Request, Requirement Strand Summary, Analysis Strand Summary, Project Profile Summary, Allowed Files, Forbidden Files, Implementation Plan, Risks, Assumptions, Acceptance Criteria, Test Plan, Rollback Plan, Codex Self-check, and Required Final Response Format inside the saved artifact.
 - In chat, summarize the brief and artifact path instead of dumping the full artifact by default.
 - Do not omit user constraints.
